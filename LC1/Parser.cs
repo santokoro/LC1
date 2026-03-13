@@ -4,7 +4,6 @@ using System.Linq;
 
 namespace LC1
 {
-    // Класс для ошибок синтаксиса
     public class SyntaxError
     {
         public int Line { get; set; }
@@ -13,39 +12,28 @@ namespace LC1
         public Token Token { get; set; }
     }
 
-    // Класс для узлов дерева разбора
     public class AstNode
     {
         public string NodeType { get; set; }
         public Token Token { get; set; }
         public List<AstNode> Children { get; set; } = new List<AstNode>();
-
-        public override string ToString()
-        {
-            if (Token != null)
-                return $"{NodeType}: {Token.Lexeme}";
-            return NodeType;
-        }
     }
 
     public class Parser
     {
-        private List<Token> tokens;
-        private int position;
-        private List<SyntaxError> errors;
+        private readonly List<Token> tokens;
+        private int position = 0;
+        private readonly List<SyntaxError> errors = new();
 
         private Token Current => position < tokens.Count ? tokens[position] : null;
 
         public Parser(List<Token> tokens)
         {
-            // Убираем пробелы - они не нужны для синтаксиса
             this.tokens = tokens.Where(t => t.Code != (int)TokenKind.Space).ToList();
-            this.position = 0;
-            this.errors = new List<SyntaxError>();
         }
 
         // ------------------------------------------------------------
-        // <Программа> → <СписокОбъявлений>
+        // <Программа> → { <Объявление> }
         // ------------------------------------------------------------
         public AstNode ParseProgram()
         {
@@ -53,26 +41,18 @@ namespace LC1
 
             while (Current != null)
             {
-                // Пробуем распарсить объявление
-                int beforePos = position;
+                int before = position;
                 var decl = ParseDeclaration();
 
                 if (decl != null)
                 {
-                    // Успешно распарсили
                     program.Children.Add(decl);
                 }
                 else
                 {
-                    // Не смогли распарсить - восстанавливаем позицию
-                    position = beforePos;
-
-                    // Сообщаем об ошибке и пропускаем токен
-                    if (Current != null)
-                    {
-                        AddError($"Неожиданный токен: {Current.Lexeme}");
-                        Next();
-                    }
+                    position = before;
+                    AddError($"Неожиданный токен: {Current?.Lexeme}");
+                    Next();
                 }
             }
 
@@ -80,134 +60,99 @@ namespace LC1
         }
 
         // ------------------------------------------------------------
-        // <Объявление> → ['const'] 'val' <Идентификатор> <НеобязательныйТип> '=' <ВещественноеЧисло> ';'
+        // <Объявление> → ['const'] 'val' IDENT [':' TYPE] '=' <Выражение> ';'
         // ------------------------------------------------------------
         private AstNode ParseDeclaration()
         {
-            int startPos = position;
+            int start = position;
 
             if (Current == null) return null;
 
-            var declNode = new AstNode { NodeType = "Объявление" };
+            var decl = new AstNode { NodeType = "Объявление" };
 
-            // --- РАЗБИРАЕМ const val (два слова подряд) ---
-
-            // Проверяем на const
+            // const
             if (CheckKeyword("const"))
             {
-                // Добавляем const как модификатор
-                declNode.Children.Add(new AstNode
-                {
-                    NodeType = "Модификатор",
-                    Token = Current
-                });
-                Next(); // пропускаем const
+                decl.Children.Add(new AstNode { NodeType = "Модификатор", Token = Current });
+                Next();
 
-                // После const обязательно должно быть val
                 if (!CheckKeyword("val"))
                 {
                     AddError("После 'const' ожидается 'val'");
-                    position = startPos;
+                    position = start;
                     return null;
                 }
             }
 
-            // Проверяем на val (обязательно)
+            // val
             if (!CheckKeyword("val"))
             {
-                // Если это не val и не было const - это не объявление
-                if (declNode.Children.Count == 0)
+                if (decl.Children.Count == 0)
                     return null;
 
-                // Если был const, а после него не val - уже обработали выше
-                position = startPos;
+                position = start;
                 return null;
             }
 
-            // Добавляем val
-            declNode.Children.Add(new AstNode
-            {
-                NodeType = "КлючевоеСлово",
-                Token = Current
-            });
-            Next(); // пропускаем val
+            decl.Children.Add(new AstNode { NodeType = "КлючевоеСлово", Token = Current });
+            Next();
 
-            // --- ДАЛЬШЕ КАК ОБЫЧНО ---
-
-            // Идентификатор
+            // идентификатор
             if (!Check(TokenKind.Identifier))
             {
                 AddError("Ожидается имя переменной");
-                position = startPos;
+                position = start;
                 return null;
             }
 
-            declNode.Children.Add(new AstNode
-            {
-                NodeType = "Идентификатор",
-                Token = Current
-            });
+            decl.Children.Add(new AstNode { NodeType = "Идентификатор", Token = Current });
             Next();
 
-            // Необязательный тип (: Double или : Float)
+            // тип
             if (Check(TokenKind.Colon))
             {
-                var typeNode = ParseType();
-                if (typeNode != null)
-                    declNode.Children.Add(typeNode);
-                else
+                var type = ParseType();
+                if (type == null)
                 {
-                    position = startPos;
+                    position = start;
                     return null;
                 }
+                decl.Children.Add(type);
             }
 
-            // Знак =
+            // =
             if (!Check(TokenKind.Assignment))
             {
                 AddError("Ожидается '='");
-                position = startPos;
+                position = start;
                 return null;
             }
 
-            declNode.Children.Add(new AstNode
-            {
-                NodeType = "Оператор",
-                Token = Current
-            });
+            decl.Children.Add(new AstNode { NodeType = "Оператор", Token = Current });
             Next();
 
-            // Вещественное число
-            if (!Check(TokenKind.RealNumber))
+            // выражение
+            var expr = ParseExpression();
+            if (expr == null)
             {
-                AddError("Ожидается вещественное число");
-                position = startPos;
+                position = start;
                 return null;
             }
 
-            declNode.Children.Add(new AstNode
-            {
-                NodeType = "Число",
-                Token = Current
-            });
-            Next();
+            decl.Children.Add(expr);
 
-            // Точка с запятой
+            // ;
             if (!Check(TokenKind.StatementEnd))
             {
-                AddError("Ожидается ';' в конце объявления");
-                position = startPos;
+                AddError("Ожидается ';'");
+                position = start;
                 return null;
             }
 
-            declNode.Children.Add(new AstNode
-            {
-                NodeType = "Разделитель",
-                Token = Current
-            });
+            decl.Children.Add(new AstNode { NodeType = "Разделитель", Token = Current });
             Next();
 
-            return declNode;
+            return decl;
         }
 
         // ------------------------------------------------------------
@@ -217,87 +162,104 @@ namespace LC1
         {
             var typeNode = new AstNode { NodeType = "Тип" };
 
-            // Двоеточие
-            typeNode.Children.Add(new AstNode
-            {
-                NodeType = "Двоеточие",
-                Token = Current
-            });
+            typeNode.Children.Add(new AstNode { NodeType = "Двоеточие", Token = Current });
             Next();
 
-            // Проверяем тип (Double или Float)
             if (!CheckKeyword("Double") && !CheckKeyword("Float"))
             {
-                AddError("Ожидается 'Double' или 'Float'");
+                AddError("Ожидается Double или Float");
                 return null;
             }
 
-            typeNode.Children.Add(new AstNode
-            {
-                NodeType = "ИмяТипа",
-                Token = Current
-            });
+            typeNode.Children.Add(new AstNode { NodeType = "ИмяТипа", Token = Current });
             Next();
 
             return typeNode;
         }
 
         // ------------------------------------------------------------
-        // ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
+        // ВЫРАЖЕНИЯ
+        // <Expression> → <Factor> { ('*' | '/') <Factor> }
         // ------------------------------------------------------------
-
-        private bool Check(TokenKind kind)
+        private AstNode ParseExpression()
         {
-            return Current != null && Current.Code == (int)kind;
+            var left = ParseFactor();
+            if (left == null) return null;
+
+            while (Check(TokenKind.Multiply) || Check(TokenKind.Divide))
+            {
+                var op = Current;
+                Next();
+
+                var right = ParseFactor();
+                if (right == null)
+                {
+                    AddError("Ожидается выражение после оператора");
+                    return null;
+                }
+
+                var node = new AstNode { NodeType = "Операция" };
+                node.Children.Add(left);
+                node.Children.Add(new AstNode { NodeType = "Оператор", Token = op });
+                node.Children.Add(right);
+
+                left = node;
+            }
+
+            return left;
         }
 
-        private bool CheckKeyword(string keyword)
+        private AstNode ParseFactor()
         {
-            return Current != null &&
-                   Current.Code == (int)TokenKind.Keyword &&
-                   Current.Lexeme == keyword;
+            if (Check(TokenKind.RealNumber) || Check(TokenKind.UnsignedInteger))
+            {
+                var node = new AstNode { NodeType = "Число", Token = Current };
+                Next();
+                return node;
+            }
+
+            if (Check(TokenKind.Identifier))
+            {
+                var node = new AstNode { NodeType = "Идентификатор", Token = Current };
+                Next();
+                return node;
+            }
+
+            AddError("Ожидается число или идентификатор");
+            return null;
         }
 
-        private void Next()
-        {
-            position++;
-        }
+        // ------------------------------------------------------------
+        // ВСПОМОГАТЕЛЬНЫЕ
+        // ------------------------------------------------------------
+        private bool Check(TokenKind kind) =>
+            Current != null && Current.Code == (int)kind;
+
+        private bool CheckKeyword(string keyword) =>
+            Current != null &&
+            Current.Code == (int)TokenKind.Keyword &&
+            Current.Lexeme == keyword;
+
+        private void Next() => position++;
 
         private void AddError(string message)
         {
-            if (Current != null)
+            errors.Add(new SyntaxError
             {
-                errors.Add(new SyntaxError
-                {
-                    Line = Current.Line,
-                    Column = Current.Start,
-                    Message = message,
-                    Token = Current
-                });
-            }
-            else if (tokens.Count > 0)
-            {
-                var last = tokens.Last();
-                errors.Add(new SyntaxError
-                {
-                    Line = last.Line,
-                    Column = last.End + 1,
-                    Message = message,
-                    Token = null
-                });
-            }
+                Line = Current?.Line ?? 0,
+                Column = Current?.Start ?? 0,
+                Message = message,
+                Token = Current
+            });
         }
 
         public List<SyntaxError> GetErrors() => errors;
 
-        // ------------------------------------------------------------
-        // МЕТОД ДЛЯ ВЫВОДА ДЕРЕВА
-        // ------------------------------------------------------------
         public string PrintAst(AstNode node, string indent = "")
         {
             if (node == null) return "";
 
-            var result = indent + "└─ " + node.NodeType;
+            string result = indent + "└─ " + node.NodeType;
 
             if (node.Token != null)
                 result += $" ({node.Token.Lexeme})";
@@ -305,9 +267,7 @@ namespace LC1
             result += "\n";
 
             foreach (var child in node.Children)
-            {
                 result += PrintAst(child, indent + "   ");
-            }
 
             return result;
         }
