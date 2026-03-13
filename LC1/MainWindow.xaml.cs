@@ -10,26 +10,26 @@ using System.Windows.Input;
 
 namespace LC1
 {
-    // ------------------ МОДЕЛИ ЛЕКСЕМ ------------------
+   
 
     public enum TokenKind
     {
-        UnsignedInteger = 1,      // целое без знака
-        Identifier = 2,           // идентификатор
-        RealNumber = 3,           // вещественное число
+        UnsignedInteger = 1,      
+        Identifier = 2,           
+        RealNumber = 3,           
 
-        Assignment = 10,          // =
-        Space = 11,               // пробел
-        Keyword = 14,             // ключевое слово
-        StatementEnd = 16,        // ;
-        Colon = 17,               // :
+        Assignment = 10,          
+        Space = 11,               
+        Keyword = 14,             
+        StatementEnd = 16,        
+        Colon = 17,               
 
-        Plus = 20,                // +
-        Minus = 21,               // -
-        Multiply = 22,            // *
-        Divide = 23,              // /
+        Plus = 20,               
+        Minus = 21,               
+        Multiply = 22,            
+        Divide = 23,              
 
-        Error = 99                // ошибка
+        Error = 99                
     }
 
     public class Token
@@ -45,7 +45,7 @@ namespace LC1
         public string Location => $"строка {Line}, {Start}-{End}";
     }
 
-    // ------------------ ОСНОВНОЕ ОКНО ------------------
+    
 
     public partial class MainWindow : Window
     {
@@ -88,7 +88,7 @@ namespace LC1
             CommandBindings.Add(new CommandBinding(ApplicationCommands.Close, (s, e) => MenuExit_Click(s, e)));
         }
 
-        // ------------------ ФАЙЛОВЫЕ ОПЕРАЦИИ ------------------
+        
 
         private void NewFile()
         {
@@ -170,11 +170,11 @@ namespace LC1
 
                 process.Start();
 
-                // Передаём текст в парсер
+                
                 process.StandardInput.WriteLine(EditorTextBox.Text);
                 process.StandardInput.Close();
 
-                // Читаем вывод
+                
                 string output = process.StandardOutput.ReadToEnd();
                 process.WaitForExit();
 
@@ -229,7 +229,7 @@ namespace LC1
         private void MenuSave_Click(object sender, RoutedEventArgs e) => SaveFile();
         private void MenuSaveAs_Click(object sender, RoutedEventArgs e) => SaveFileAs();
 
-        // ------------------ ЛЕКСИЧЕСКИЙ АНАЛИЗ ------------------
+        
 
         private void MenuRun_Click(object sender, RoutedEventArgs e) => RunCompiler();
 
@@ -239,21 +239,21 @@ namespace LC1
 
             try
             {
-                // 1. Лексический анализ
+                
                 var tokens = Scan(source);
                 TokensGrid.ItemsSource = tokens;
 
-                // 2. Синтаксический анализ
+                
                 var parser = new Parser(tokens);
                 var ast = parser.ParseProgram();
                 var errors = parser.GetErrors();
 
-                // 3. Показываем результат
+                
                 if (errors.Any())
                 {
                     ShowSyntaxErrors(errors);
 
-                    // Всё равно показываем дерево (может быть частичным)
+                    
                     string astText = parser.PrintAst(ast);
                     MessageBox.Show($"Дерево разбора (с ошибками):\n\n{astText}",
                                   "Результат парсинга",
@@ -262,9 +262,9 @@ namespace LC1
                 }
                 else
                 {
-                    // Всё хорошо - показываем дерево
+                    
                     string astText = parser.PrintAst(ast);
-                    MessageBox.Show($"✅ Синтаксических ошибок нет!\n\nДерево разбора:\n{astText}",
+                    MessageBox.Show($" Синтаксических ошибок нет!\n\nДерево разбора:\n{astText}",
                                   "Успех",
                                   MessageBoxButton.OK,
                                   MessageBoxImage.Information);
@@ -281,13 +281,13 @@ namespace LC1
 
         private void ShowSyntaxErrors(List<SyntaxError> errors)
         {
-            // Формируем сообщение об ошибках
-            string message = "❌ Найдены ошибки синтаксиса:\n\n";
+            
+            string message = " Найдены ошибки синтаксиса:\n\n";
             foreach (var error in errors)
             {
                 message += $"Строка {error.Line}, позиция {error.Column}: {error.Message}\n";
 
-                // Подсвечиваем ошибку в тексте
+                
                 try
                 {
                     int lineStart = EditorTextBox.GetCharacterIndexFromLineIndex(error.Line - 1);
@@ -300,7 +300,7 @@ namespace LC1
                 catch { }
             }
 
-            // Показываем предупреждение
+           
             MessageBox.Show(message, "Ошибки синтаксиса",
                            MessageBoxButton.OK,
                            MessageBoxImage.Warning);
@@ -332,7 +332,7 @@ namespace LC1
             {
                 char c = text[i];
 
-                // Перевод строки
+                
                 if (c == '\r') { i++; continue; }
                 if (c == '\n')
                 {
@@ -342,7 +342,7 @@ namespace LC1
                     continue;
                 }
 
-                // Пробел / таб
+                
                 if (c == ' ' || c == '\t')
                 {
                     tokens.Add(new Token
@@ -359,7 +359,7 @@ namespace LC1
                     continue;
                 }
 
-                // Идентификатор / ключевое слово
+                
                 if (char.IsLetter(c) || c == '_')
                 {
                     int startCol = col;
@@ -387,8 +387,7 @@ namespace LC1
                     continue;
                 }
 
-                // ------------------ ЧИСЛО ------------------
-                // Вариант B: знак НЕ является частью числа
+                
                 if (char.IsDigit(c) || c == '.')
                 {
                     int startCol = col;
@@ -398,7 +397,7 @@ namespace LC1
                     bool hasDigitsBeforeDot = false;
                     bool hasDigitsAfterDot = false;
 
-                    // целая часть
+                    
                     if (char.IsDigit(c))
                     {
                         hasDigitsBeforeDot = true;
@@ -409,7 +408,7 @@ namespace LC1
                         }
                     }
 
-                    // точка
+                    
                     if (i < text.Length && text[i] == '.')
                     {
                         hasDot = true;
@@ -471,9 +470,7 @@ namespace LC1
                     continue;
                 }
 
-                // ------------------ ОПЕРАТОРЫ ------------------
-
-                // +
+                
                 if (c == '+')
                 {
                     tokens.Add(new Token
@@ -489,7 +486,7 @@ namespace LC1
                     continue;
                 }
 
-                // -
+                
                 if (c == '-')
                 {
                     tokens.Add(new Token
@@ -505,7 +502,7 @@ namespace LC1
                     continue;
                 }
 
-                // *
+               
                 if (c == '*')
                 {
                     tokens.Add(new Token
@@ -521,7 +518,7 @@ namespace LC1
                     continue;
                 }
 
-                // /
+               
                 if (c == '/')
                 {
                     tokens.Add(new Token
@@ -537,9 +534,7 @@ namespace LC1
                     continue;
                 }
 
-                // ------------------ СЛУЖЕБНЫЕ СИМВОЛЫ ------------------
-
-                // =
+               
                 if (c == '=')
                 {
                     tokens.Add(new Token
@@ -555,7 +550,7 @@ namespace LC1
                     continue;
                 }
 
-                // ;
+                
                 if (c == ';')
                 {
                     tokens.Add(new Token
@@ -571,7 +566,7 @@ namespace LC1
                     continue;
                 }
 
-                // :
+                
                 if (c == ':')
                 {
                     tokens.Add(new Token
@@ -587,7 +582,7 @@ namespace LC1
                     continue;
                 }
 
-                // ------------------ ОШИБКА ------------------
+
                 tokens.Add(MakeErrorToken(line, col, c.ToString()));
                 i++;
                 col++;
@@ -596,7 +591,7 @@ namespace LC1
             return tokens;
         }
 
-        // ------------------ ПЕРЕХОД К ОШИБКЕ ------------------
+        
 
         private void TokensGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
@@ -614,7 +609,7 @@ namespace LC1
             }
         }
 
-        // ------------------ ОТМЕНА / ПОВТОР ------------------
+        
 
         private void Undo()
         {
@@ -642,18 +637,18 @@ namespace LC1
         private void Undo_Click(object sender, RoutedEventArgs e) => Undo();
         private void Redo_Click(object sender, RoutedEventArgs e) => Redo();
 
-        // ------------------ КОПИРОВАНИЕ / ВСТАВКА ------------------
+        
 
         private void Copy_Click(object sender, RoutedEventArgs e) => EditorTextBox.Copy();
         private void Cut_Click(object sender, RoutedEventArgs e) => EditorTextBox.Cut();
         private void Paste_Click(object sender, RoutedEventArgs e) => EditorTextBox.Paste();
 
-        // ------------------ СПРАВКА / О ПРОГРАММЕ ------------------
+       
 
         private void MenuAbout_Click(object sender, RoutedEventArgs e) => new AboutWindow().ShowDialog();
         private void MenuHelp_Click(object sender, RoutedEventArgs e) => new HelpWindow().ShowDialog();
 
-        // ------------------ РАЗМЕР ШРИФТА ------------------
+       
 
         private void ApplyFontSize(double size)
         {
@@ -689,7 +684,7 @@ namespace LC1
                 ApplyFontSize(size);
         }
 
-        // ------------------ ВЫХОД ------------------
+        
 
         private void MenuExit_Click(object sender, RoutedEventArgs e)
         {
@@ -732,7 +727,7 @@ namespace LC1
             }
         }
 
-        // ------------------ НОМЕРА СТРОК ------------------
+        
 
         private void UpdateLineNumbers()
         {
@@ -756,7 +751,7 @@ namespace LC1
             LineNumbersScroll.ScrollToVerticalOffset(e.VerticalOffset);
         }
 
-        // ------------------ DRAG & DROP ------------------
+        
 
         private void Window_DragEnter(object sender, DragEventArgs e)
         {
@@ -783,7 +778,7 @@ namespace LC1
             this.Title = $"Compiler — {Path.GetFileName(path)}";
         }
 
-        // ------------------ СТАТУС-БАР ------------------
+        
 
         private void UpdateStatusBar()
         {

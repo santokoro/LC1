@@ -32,9 +32,7 @@ namespace LC1
             this.tokens = tokens.Where(t => t.Code != (int)TokenKind.Space).ToList();
         }
 
-        // ------------------------------------------------------------
-        // <Программа> → { <Объявление> }
-        // ------------------------------------------------------------
+        
         public AstNode ParseProgram()
         {
             var program = new AstNode { NodeType = "Программа" };
@@ -59,9 +57,7 @@ namespace LC1
             return program;
         }
 
-        // ------------------------------------------------------------
-        // <Объявление> → ['const'] 'val' IDENT [':' TYPE] '=' <Выражение> ';'
-        // ------------------------------------------------------------
+       
         private AstNode ParseDeclaration()
         {
             int start = position;
@@ -70,7 +66,7 @@ namespace LC1
 
             var decl = new AstNode { NodeType = "Объявление" };
 
-            // const
+            
             if (CheckKeyword("const"))
             {
                 decl.Children.Add(new AstNode { NodeType = "Модификатор", Token = Current });
@@ -84,7 +80,7 @@ namespace LC1
                 }
             }
 
-            // val
+            
             if (!CheckKeyword("val"))
             {
                 if (decl.Children.Count == 0)
@@ -97,7 +93,7 @@ namespace LC1
             decl.Children.Add(new AstNode { NodeType = "КлючевоеСлово", Token = Current });
             Next();
 
-            // идентификатор
+            
             if (!Check(TokenKind.Identifier))
             {
                 AddError("Ожидается имя переменной");
@@ -108,7 +104,7 @@ namespace LC1
             decl.Children.Add(new AstNode { NodeType = "Идентификатор", Token = Current });
             Next();
 
-            // тип
+            
             if (Check(TokenKind.Colon))
             {
                 var type = ParseType();
@@ -120,7 +116,7 @@ namespace LC1
                 decl.Children.Add(type);
             }
 
-            // =
+            
             if (!Check(TokenKind.Assignment))
             {
                 AddError("Ожидается '='");
@@ -131,7 +127,7 @@ namespace LC1
             decl.Children.Add(new AstNode { NodeType = "Оператор", Token = Current });
             Next();
 
-            // выражение
+            
             var expr = ParseExpression();
             if (expr == null)
             {
@@ -141,7 +137,7 @@ namespace LC1
 
             decl.Children.Add(expr);
 
-            // ;
+            
             if (!Check(TokenKind.StatementEnd))
             {
                 AddError("Ожидается ';'");
@@ -155,9 +151,6 @@ namespace LC1
             return decl;
         }
 
-        // ------------------------------------------------------------
-        // <Тип> → ':' ('Double' | 'Float')
-        // ------------------------------------------------------------
         private AstNode ParseType()
         {
             var typeNode = new AstNode { NodeType = "Тип" };
@@ -177,10 +170,7 @@ namespace LC1
             return typeNode;
         }
 
-        // ------------------------------------------------------------
-        // ВЫРАЖЕНИЯ
-        // <Expression> → <Factor> { ('*' | '/') <Factor> }
-        // ------------------------------------------------------------
+        
         private AstNode ParseExpression()
         {
             var left = ParseFactor();
@@ -229,9 +219,7 @@ namespace LC1
             return null;
         }
 
-        // ------------------------------------------------------------
-        // ВСПОМОГАТЕЛЬНЫЕ
-        // ------------------------------------------------------------
+        
         private bool Check(TokenKind kind) =>
             Current != null && Current.Code == (int)kind;
 
