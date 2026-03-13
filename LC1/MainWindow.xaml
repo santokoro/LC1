@@ -20,10 +20,9 @@
         <KeyBinding Key="Q" Modifiers="Ctrl" Command="Close"/>
     </Window.InputBindings>
 
-
-
-
     <DockPanel>
+
+        <!-- МЕНЮ -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="Файл">
                 <MenuItem Header="Создать" Click="MenuNew_Click"/>
@@ -31,7 +30,7 @@
                 <MenuItem Header="Сохранить" Click="MenuSave_Click"/>
                 <MenuItem Header="Сохранить как..." Click="MenuSaveAs_Click"/>
                 <Separator />
-                <MenuItem Header= "Выход" Click="MenuExit_Click"/>
+                <MenuItem Header="Выход" Click="MenuExit_Click"/>
             </MenuItem>
 
             <MenuItem Header="_Правка">
@@ -59,16 +58,17 @@
             <MenuItem Header="_Пуск" Click="MenuRun_Click"/>
 
             <MenuItem Header="_Справка">
-                <MenuItem Header="Вызов справки"/>
-                <MenuItem Header="О программе"/>
+                <MenuItem Header="Вызов справки" Click="MenuHelp_Click"/>
+                <MenuItem Header="О программе" Click="MenuAbout_Click"/>
             </MenuItem>
         </Menu>
-        
+
+        <!-- СТАТУС-БАР -->
         <StatusBar DockPanel.Dock="Bottom">
             <TextBlock Name="StatusBarText" Text="Готово"/>
         </StatusBar>
 
-
+        <!-- ТУЛБАР -->
         <ToolBarTray DockPanel.Dock="Top">
             <ToolBar>
                 <Button ToolTip ="Создать" Click="MenuNew_Click">
@@ -82,6 +82,7 @@
                 <Button ToolTip="Сохранить" Click ="MenuSave_Click">
                     <Image Source="Images/save.png" Width="30" Height="30"/>
                 </Button>
+
                 <Separator/>
 
                 <Button ToolTip="Назад" Click="Undo_Click">
@@ -111,22 +112,34 @@
                 <Button ToolTip="Пуск" Click="MenuRun_Click">
                     <Image Source="Images/push2.png" Width="30" Height="30"/>
                 </Button>
+                
+                <Separator/>
+
+                <Button Content="Проверить Flex/Bison"
+        Width="180"
+        Height="30"
+        Margin="10"
+        Click="CheckFlexBison_Click"/>
+
 
                 <Separator/>
 
                 <Button ToolTip="Справка" Click="MenuHelp_Click">
                     <Image Source="Images/info2.png" Width="30" Height="30"/>
                 </Button>
+
                 <Button ToolTip="О программе" Click="MenuAbout_Click">
                     <Image Source="Images/info.png" Width="30" Height="30"/>
                 </Button>
+
                 <StackPanel Orientation="Horizontal" Margin="10,0,0,0">
                     <TextBox x:Name="FontSizeBox"
-             Width="27"
-             Text="14"
-             VerticalContentAlignment="Center"
-             HorizontalContentAlignment="Center"
-             TextChanged="FontSizeBox_TextChanged" Height="23"/>
+                             Width="27"
+                             Text="14"
+                             VerticalContentAlignment="Center"
+                             HorizontalContentAlignment="Center"
+                             TextChanged="FontSizeBox_TextChanged"
+                             Height="23"/>
 
                     <StackPanel Orientation="Vertical" Margin="2,0,0,0">
                         <Button Height="18" Click="FontSizeUp_Click">▲</Button>
@@ -137,6 +150,7 @@
             </ToolBar>
         </ToolBarTray>
 
+        <!-- ОСНОВНАЯ СЕТКА -->
         <Grid>
 
             <Grid.RowDefinitions>
@@ -144,61 +158,62 @@
                 <RowDefinition Height="5"/>
                 <RowDefinition Height="2*"/>
             </Grid.RowDefinitions>
-            
 
-           
+            <!-- РЕДАКТОР -->
             <Grid Grid.Row="0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="40"/>
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-             
                 <ScrollViewer Name="LineNumbersScroll"
-                      VerticalScrollBarVisibility="Hidden"
-                      HorizontalScrollBarVisibility="Disabled">
+                              VerticalScrollBarVisibility="Hidden"
+                              HorizontalScrollBarVisibility="Disabled">
                     <TextBlock Name="LineNumbers"
-                       FontFamily="Consolas"
-                       FontSize="14"
-                       TextAlignment="Right"
-                       Margin="0,2,5,0"/>
+                               FontFamily="Consolas"
+                               FontSize="14"
+                               TextAlignment="Right"
+                               Margin="0,2,5,0"/>
                 </ScrollViewer>
 
-             
                 <TextBox Grid.Column="1"
-                 Name="EditorTextBox"
-                 AcceptsReturn="True"
-                 AcceptsTab="True"
-                 VerticalScrollBarVisibility="Auto"
-                 HorizontalScrollBarVisibility="Auto"
-                 FontFamily="Consolas"
-                 FontSize="14"
-                 TextWrapping="NoWrap"
-                 TextChanged="EditorTextBox_TextChanged"
-                 />
+                         Name="EditorTextBox"
+                         AcceptsReturn="True"
+                         AcceptsTab="True"
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Auto"
+                         FontFamily="Consolas"
+                         FontSize="14"
+                         TextWrapping="NoWrap"
+                         TextChanged="EditorTextBox_TextChanged"/>
             </Grid>
 
-   
+            <!-- СПЛИТТЕР -->
             <GridSplitter Grid.Row="1"
-                  Height="5"
-                  HorizontalAlignment="Stretch"
-                  VerticalAlignment="Center"
-                  Background="Gray"
-                  ShowsPreview="True"/>
+                          Height="5"
+                          HorizontalAlignment="Stretch"
+                          VerticalAlignment="Center"
+                          Background="Gray"
+                          ShowsPreview="True"/>
 
-           
-            <TextBox Grid.Row="2"
-             Name="OutputTextBox"
-             IsReadOnly="True"
-             VerticalScrollBarVisibility="Auto"
-             HorizontalScrollBarVisibility="Auto"
-             FontSize="13"
-             FontFamily="Consolas"
-             Background="#FFF7F7F7"
-             TextWrapping="Wrap"/>
+            <!-- ТАБЛИЦА ЛЕКСЕМ -->
+            <DataGrid Grid.Row="2"
+                      Name="TokensGrid"
+                      AutoGenerateColumns="False"
+                      IsReadOnly="True"
+                      SelectionMode="Single"
+                      MouseDoubleClick="TokensGrid_MouseDoubleClick">
+
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="Код" Binding="{Binding Code}" Width="60"/>
+                    <DataGridTextColumn Header="Тип лексемы" Binding="{Binding Type}" Width="*"/>
+                    <DataGridTextColumn Header="Лексема" Binding="{Binding Lexeme}" Width="150"/>
+                    <DataGridTextColumn Header="Местоположение" Binding="{Binding Location}" Width="200"/>
+                </DataGrid.Columns>
+
+            </DataGrid>
+
         </Grid>
-        
 
     </DockPanel>
 </Window>
-

@@ -1,68 +1,50 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net7.0-windows</TargetFramework>
-    <Nullable>enable</Nullable>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <UseWPF>true</UseWPF>
-  </PropertyGroup>
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net7.0-windows</TargetFramework>
+		<Nullable>enable</Nullable>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<UseWPF>true</UseWPF>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <Compile Remove="Resources\**" />
-    <EmbeddedResource Remove="Resources\**" />
-    <None Remove="Resources\**" />
-    <Page Remove="Resources\**" />
-  </ItemGroup>
+	<ItemGroup>
+		<None Remove="Images\back.png" />
+		<None Remove="Images\copy.png" />
+		<None Remove="Images\cut.png" />
+		<None Remove="Images\enter.png" />
+		<None Remove="Images\forward.png" />
+		<None Remove="Images\info.png" />
+		<None Remove="Images\info2.png" />
+		<None Remove="Images\new.png" />
+		<None Remove="Images\open.png" />
+		<None Remove="Images\push2.png" />
+		<None Remove="Images\save.png" />
+		<None Remove="Resources\About.html" />
+		<None Remove="Resources\Help.html" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <None Remove="Images\back.png" />
-    <None Remove="Images\copy.png" />
-    <None Remove="Images\cut.png" />
-    <None Remove="Images\enter.png" />
-    <None Remove="Images\forward.png" />
-    <None Remove="Images\info.png" />
-    <None Remove="Images\info2.png" />
-    <None Remove="Images\new.png" />
-    <None Remove="Images\open.png" />
-    <None Remove="Images\push2.png" />
-    <None Remove="Images\save.png" />
-  </ItemGroup>
+	<ItemGroup>
+		<Resource Include="Images\back.png" />
+		<Resource Include="Images\copy.png" />
+		<Resource Include="Images\cut.png" />
+		<Resource Include="Images\enter.png" />
+		<Resource Include="Images\forward.png" />
+		<Resource Include="Images\info.png" />
+		<Resource Include="Images\info2.png" />
+		<Resource Include="Images\new.png" />
+		<Resource Include="Images\open.png" />
+		<Resource Include="Images\push2.png" />
+		<Resource Include="Images\save.png" />
+		<Resource Include="Resources\About.html" />
+		<Resource Include="Resources\Help.html" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <Resource Include="Images\back.png">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Images\copy.png">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Images\cut.png">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Images\enter.png">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Images\forward.png">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Images\info.png">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Images\info2.png">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Images\new.png">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Images\open.png">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Images\push2.png">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Resource>
-    <Resource Include="Images\save.png">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </Resource>
-  </ItemGroup>
+
+	<ItemGroup>
+		<None Include="parser.exe">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
 
 </Project>

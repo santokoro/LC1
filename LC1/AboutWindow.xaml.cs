@@ -1,4 +1,6 @@
-﻿using System.Windows;
+﻿using System;
+using System.IO;
+using System.Windows;
 
 namespace LC1
 {
@@ -8,13 +10,14 @@ namespace LC1
         {
             InitializeComponent();
 
-            string path = System.IO.Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory,
-                "Resources",
-                "About.html");
+            var uri = new Uri("pack://application:,,,/Resources/About.html");
+            var stream = Application.GetResourceStream(uri).Stream;
 
-            Browser.Navigate(new Uri(path));
+            using var reader = new StreamReader(stream);
+            string html = reader.ReadToEnd();
+
+            Browser.NavigateToString(html);
         }
+
     }
 }
-

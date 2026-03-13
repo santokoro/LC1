@@ -10,12 +10,15 @@ namespace LC1
         {
             InitializeComponent();
 
-            string path = Path.Combine(
-                AppDomain.CurrentDomain.BaseDirectory,
-                "Resources",
-                "Help.html");
+            var uri = new Uri("pack://application:,,,/Resources/Help.html");
+            var stream = Application.GetResourceStream(uri).Stream;
 
-            Browser.Navigate(new Uri(path));
+            using var reader = new StreamReader(stream);
+            string html = reader.ReadToEnd();
+
+            Browser.NavigateToString(html);
         }
+
+
     }
 }
