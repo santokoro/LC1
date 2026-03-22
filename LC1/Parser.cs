@@ -27,7 +27,7 @@ namespace LC1
 
         private bool typeError = false;
 
-       
+
         private bool panicMode = false;
 
         private Token Current => position < tokens.Count ? tokens[position] : null;
@@ -37,7 +37,7 @@ namespace LC1
             this.tokens = tokens.Where(t => t.Code != (int)TokenKind.Space).ToList();
         }
 
-       
+
         private void SkipTo(params TokenKind[] kinds)
         {
             while (Current != null && !kinds.Contains((TokenKind)Current.Code))
@@ -58,7 +58,7 @@ namespace LC1
                 }
                 else
                 {
-                   
+
                     if (!panicMode)
                     {
                         AddError($"Неожиданный токен: {Current?.Lexeme}");
@@ -76,7 +76,7 @@ namespace LC1
         {
             var decl = new AstNode { NodeType = "Объявление" };
 
-           
+
             if (!CheckKeyword("const"))
             {
                 if (!panicMode)
@@ -99,7 +99,7 @@ namespace LC1
             decl.Children.Add(new AstNode { NodeType = "Модификатор", Token = Current });
             Next();
 
-            
+
             if (!CheckKeyword("val"))
             {
                 if (!panicMode)
@@ -121,7 +121,7 @@ namespace LC1
             decl.Children.Add(new AstNode { NodeType = "КлючевоеСлово", Token = Current });
             Next();
 
-            
+
             if (!Check(TokenKind.Identifier))
             {
                 if (!panicMode)
@@ -143,7 +143,7 @@ namespace LC1
             decl.Children.Add(new AstNode { NodeType = "Идентификатор", Token = Current });
             Next();
 
-            
+
             typeError = false;
             var type = ParseType();
 
@@ -174,7 +174,7 @@ namespace LC1
 
             decl.Children.Add(type);
 
-            
+
             if (!Check(TokenKind.Assignment))
             {
                 if (!panicMode)
@@ -196,7 +196,7 @@ namespace LC1
             decl.Children.Add(new AstNode { NodeType = "Оператор", Token = Current });
             Next();
 
-            
+
             var expr = ParseExpression();
             if (expr == null)
             {
