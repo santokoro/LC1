@@ -82,6 +82,9 @@
                 <Button ToolTip="Сохранить" Click ="MenuSave_Click">
                     <Image Source="Images/save.png" Width="30" Height="30"/>
                 </Button>
+                
+                <Button Content="ANTLR Parser" Click="RunAntlrParser_Click" />
+
 
                 <Separator/>
 

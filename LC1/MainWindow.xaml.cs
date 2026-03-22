@@ -87,7 +87,7 @@ namespace LC1
             CommandBindings.Add(new CommandBinding(NavigationCommands.Refresh, (s, e) => RunCompiler()));
             CommandBindings.Add(new CommandBinding(ApplicationCommands.Close, (s, e) => MenuExit_Click(s, e)));
         }
-
+        
         
 
         private void NewFile()
@@ -278,6 +278,29 @@ namespace LC1
                               MessageBoxImage.Error);
             }
         }
+
+        private void RunAntlrParser_Click(object sender, RoutedEventArgs e)
+        {
+            string source = EditorTextBox.Text;
+
+            var (tree, errors) = AntlrRunner.Run(source);
+
+            if (errors.Count > 0)
+            {
+                string msg = "Ошибки ANTLR:\n\n" + string.Join("\n", errors);
+                MessageBox.Show(msg, "ANTLR — ошибки", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            else
+            {
+                MessageBox.Show("ANTLR: ошибок нет!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+
+            
+            string pretty = PrettyTreePrinter.Print(tree, new KotlinConstParser(null));
+            MessageBox.Show(pretty, "ANTLR AST");
+
+        }
+
 
         private void ShowSyntaxErrors(List<SyntaxError> errors)
         {
@@ -633,6 +656,8 @@ namespace LC1
                 isInternalChange = false;
             }
         }
+
+
 
         private void Undo_Click(object sender, RoutedEventArgs e) => Undo();
         private void Redo_Click(object sender, RoutedEventArgs e) => Redo();

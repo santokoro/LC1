@@ -25,6 +25,11 @@ namespace LC1
         private int position = 0;
         private readonly List<SyntaxError> errors = new();
 
+        private bool typeError = false;
+
+       
+        private bool panicMode = false;
+
         private Token Current => position < tokens.Count ? tokens[position] : null;
 
         public Parser(List<Token> tokens)
@@ -32,14 +37,19 @@ namespace LC1
             this.tokens = tokens.Where(t => t.Code != (int)TokenKind.Space).ToList();
         }
 
-        
+       
+        private void SkipTo(params TokenKind[] kinds)
+        {
+            while (Current != null && !kinds.Contains((TokenKind)Current.Code))
+                Next();
+        }
+
         public AstNode ParseProgram()
         {
             var program = new AstNode { NodeType = "Программа" };
 
             while (Current != null)
             {
-                int before = position;
                 var decl = ParseDeclaration();
 
                 if (decl != null)
@@ -48,8 +58,12 @@ namespace LC1
                 }
                 else
                 {
-                    position = before;
-                    AddError($"Неожиданный токен: {Current?.Lexeme}");
+                   
+                    if (!panicMode)
+                    {
+                        AddError($"Неожиданный токен: {Current?.Lexeme}");
+                    }
+
                     Next();
                 }
             }
@@ -57,37 +71,51 @@ namespace LC1
             return program;
         }
 
-       
+
         private AstNode ParseDeclaration()
         {
-            int start = position;
-
-            if (Current == null) return null;
-
             var decl = new AstNode { NodeType = "Объявление" };
 
-            
-            if (CheckKeyword("const"))
+           
+            if (!CheckKeyword("const"))
             {
-                decl.Children.Add(new AstNode { NodeType = "Модификатор", Token = Current });
-                Next();
-
-                if (!CheckKeyword("val"))
+                if (!panicMode)
                 {
-                    AddError("После 'const' ожидается 'val'");
-                    position = start;
-                    return null;
+                    AddError("Ожидалось 'const'");
+                    panicMode = true;
                 }
+
+                SkipTo(TokenKind.StatementEnd);
+
+                if (Check(TokenKind.StatementEnd))
+                {
+                    Next();
+                    panicMode = false;
+                }
+
+                return null;
             }
+
+            decl.Children.Add(new AstNode { NodeType = "Модификатор", Token = Current });
+            Next();
 
             
             if (!CheckKeyword("val"))
             {
-                if (decl.Children.Count == 0)
-                    return null;
+                if (!panicMode)
+                {
+                    AddError("После 'const' ожидается 'val'");
+                    panicMode = true;
+                }
 
-                position = start;
-                return null;
+                SkipTo(TokenKind.StatementEnd);
+                if (Check(TokenKind.StatementEnd))
+                {
+                    Next();
+                    panicMode = false;
+                }
+
+                return decl;
             }
 
             decl.Children.Add(new AstNode { NodeType = "КлючевоеСлово", Token = Current });
@@ -96,32 +124,73 @@ namespace LC1
             
             if (!Check(TokenKind.Identifier))
             {
-                AddError("Ожидается имя переменной");
-                position = start;
-                return null;
+                if (!panicMode)
+                {
+                    AddError("Ожидается имя переменной");
+                    panicMode = true;
+                }
+
+                SkipTo(TokenKind.StatementEnd);
+                if (Check(TokenKind.StatementEnd))
+                {
+                    Next();
+                    panicMode = false;
+                }
+
+                return decl;
             }
 
             decl.Children.Add(new AstNode { NodeType = "Идентификатор", Token = Current });
             Next();
 
             
-            if (Check(TokenKind.Colon))
+            typeError = false;
+            var type = ParseType();
+
+            if (typeError)
             {
-                var type = ParseType();
-                if (type == null)
+                SkipTo(TokenKind.StatementEnd);
+                if (Check(TokenKind.StatementEnd))
                 {
-                    position = start;
-                    return null;
+                    Next();
+                    panicMode = false;
                 }
-                decl.Children.Add(type);
+
+                decl.Children.Add(type ?? new AstNode { NodeType = "Тип(ошибка)" });
+                return decl;
             }
+
+            if (type == null)
+            {
+                SkipTo(TokenKind.StatementEnd);
+                if (Check(TokenKind.StatementEnd))
+                {
+                    Next();
+                    panicMode = false;
+                }
+
+                return decl;
+            }
+
+            decl.Children.Add(type);
 
             
             if (!Check(TokenKind.Assignment))
             {
-                AddError("Ожидается '='");
-                position = start;
-                return null;
+                if (!panicMode)
+                {
+                    AddError("Ожидается '='");
+                    panicMode = true;
+                }
+
+                SkipTo(TokenKind.StatementEnd);
+                if (Check(TokenKind.StatementEnd))
+                {
+                    Next();
+                    panicMode = false;
+                }
+
+                return decl;
             }
 
             decl.Children.Add(new AstNode { NodeType = "Оператор", Token = Current });
@@ -131,18 +200,35 @@ namespace LC1
             var expr = ParseExpression();
             if (expr == null)
             {
-                position = start;
-                return null;
+                SkipTo(TokenKind.StatementEnd);
+                if (Check(TokenKind.StatementEnd))
+                {
+                    Next();
+                    panicMode = false;
+                }
+
+                return decl;
             }
 
             decl.Children.Add(expr);
 
-            
+            // ';'
             if (!Check(TokenKind.StatementEnd))
             {
-                AddError("Ожидается ';'");
-                position = start;
-                return null;
+                if (!panicMode)
+                {
+                    AddError("Ожидается ';'");
+                    panicMode = true;
+                }
+
+                SkipTo(TokenKind.StatementEnd);
+                if (Check(TokenKind.StatementEnd))
+                {
+                    Next();
+                    panicMode = false;
+                }
+
+                return decl;
             }
 
             decl.Children.Add(new AstNode { NodeType = "Разделитель", Token = Current });
@@ -155,51 +241,92 @@ namespace LC1
         {
             var typeNode = new AstNode { NodeType = "Тип" };
 
+            if (!Check(TokenKind.Colon))
+            {
+                if (!panicMode)
+                {
+                    AddError("Ожидается ':' перед типом");
+                    panicMode = true;
+                }
+
+                typeError = true;
+                return null;
+            }
+
             typeNode.Children.Add(new AstNode { NodeType = "Двоеточие", Token = Current });
             Next();
 
-            if (!CheckKeyword("Double") && !CheckKeyword("Float"))
+            if (!CheckKeyword("Double"))
             {
-                AddError("Ожидается Double или Float");
+                if (!panicMode)
+                {
+                    AddError($"Ожидается тип Double, найдено '{Current?.Lexeme}'");
+                    panicMode = true;
+                }
+
+                typeError = true;
                 return null;
             }
 
             typeNode.Children.Add(new AstNode { NodeType = "ИмяТипа", Token = Current });
             Next();
 
+            if (CheckKeyword("Double"))
+            {
+                if (!panicMode)
+                {
+                    AddError($"Лишний токен '{Current.Lexeme}' после типа");
+                    panicMode = true;
+                }
+
+                typeError = true;
+                return typeNode;
+            }
+
             return typeNode;
         }
 
-        
         private AstNode ParseExpression()
         {
-            var left = ParseFactor();
-            if (left == null) return null;
-
-            while (Check(TokenKind.Multiply) || Check(TokenKind.Divide))
+            if (Check(TokenKind.Minus))
             {
-                var op = Current;
+                var minusToken = Current;
                 Next();
 
-                var right = ParseFactor();
-                if (right == null)
+                var number = ParseNumber();
+                if (number == null)
                 {
-                    AddError("Ожидается выражение после оператора");
+                    if (!panicMode)
+                    {
+                        AddError("После '-' ожидается число");
+                        panicMode = true;
+                    }
+
                     return null;
                 }
 
-                var node = new AstNode { NodeType = "Операция" };
-                node.Children.Add(left);
-                node.Children.Add(new AstNode { NodeType = "Оператор", Token = op });
-                node.Children.Add(right);
-
-                left = node;
+                var node = new AstNode { NodeType = "УнарныйМинус" };
+                node.Children.Add(new AstNode { NodeType = "Оператор", Token = minusToken });
+                node.Children.Add(number);
+                return node;
             }
 
-            return left;
+            var num = ParseNumber();
+            if (num == null)
+            {
+                if (!panicMode)
+                {
+                    AddError("Ожидается число");
+                    panicMode = true;
+                }
+
+                return null;
+            }
+
+            return num;
         }
 
-        private AstNode ParseFactor()
+        private AstNode ParseNumber()
         {
             if (Check(TokenKind.RealNumber) || Check(TokenKind.UnsignedInteger))
             {
@@ -208,18 +335,9 @@ namespace LC1
                 return node;
             }
 
-            if (Check(TokenKind.Identifier))
-            {
-                var node = new AstNode { NodeType = "Идентификатор", Token = Current };
-                Next();
-                return node;
-            }
-
-            AddError("Ожидается число или идентификатор");
             return null;
         }
 
-        
         private bool Check(TokenKind kind) =>
             Current != null && Current.Code == (int)kind;
 
