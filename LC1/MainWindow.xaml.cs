@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Antlr4.Runtime;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
@@ -247,8 +248,10 @@ namespace LC1
                 var parser = new Parser(tokens);
                 var ast = parser.ParseProgram();
                 var errors = parser.GetErrors();
+                ErrorGrid.ItemsSource = parser.GetErrors();
 
-                
+
+
                 if (errors.Any())
                 {
                     ShowSyntaxErrors(errors);
@@ -752,7 +755,7 @@ namespace LC1
             }
         }
 
-        
+
 
         private void UpdateLineNumbers()
         {
@@ -764,6 +767,8 @@ namespace LC1
 
             LineNumbers.Text = sb.ToString();
         }
+
+
 
         private void EditorTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {

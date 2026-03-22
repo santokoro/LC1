@@ -22,7 +22,6 @@
 
     <DockPanel>
 
-        
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="Файл">
                 <MenuItem Header="Создать" Click="MenuNew_Click"/>
@@ -63,12 +62,10 @@
             </MenuItem>
         </Menu>
 
-        
         <StatusBar DockPanel.Dock="Bottom">
             <TextBlock Name="StatusBarText" Text="Готово"/>
         </StatusBar>
 
-      
         <ToolBarTray DockPanel.Dock="Top">
             <ToolBar>
                 <Button ToolTip ="Создать" Click="MenuNew_Click">
@@ -82,9 +79,8 @@
                 <Button ToolTip="Сохранить" Click ="MenuSave_Click">
                     <Image Source="Images/save.png" Width="30" Height="30"/>
                 </Button>
-                
-                <Button Content="ANTLR Parser" Click="RunAntlrParser_Click" />
 
+                <Button Content="ANTLR Parser" Click="RunAntlrParser_Click" />
 
                 <Separator/>
 
@@ -115,15 +111,14 @@
                 <Button ToolTip="Пуск" Click="MenuRun_Click">
                     <Image Source="Images/push2.png" Width="30" Height="30"/>
                 </Button>
-                
+
                 <Separator/>
 
                 <Button Content="Проверить Flex/Bison"
-        Width="180"
-        Height="30"
-        Margin="10"
-        Click="CheckFlexBison_Click"/>
-
+                        Width="180"
+                        Height="30"
+                        Margin="10"
+                        Click="CheckFlexBison_Click"/>
 
                 <Separator/>
 
@@ -153,7 +148,6 @@
             </ToolBar>
         </ToolBarTray>
 
-        
         <Grid>
 
             <Grid.RowDefinitions>
@@ -191,7 +185,6 @@
                          TextChanged="EditorTextBox_TextChanged"/>
             </Grid>
 
-           
             <GridSplitter Grid.Row="1"
                           Height="5"
                           HorizontalAlignment="Stretch"
@@ -200,21 +193,43 @@
                           ShowsPreview="True"/>
 
             
-            <DataGrid Grid.Row="2"
-                      Name="TokensGrid"
-                      AutoGenerateColumns="False"
-                      IsReadOnly="True"
-                      SelectionMode="Single"
-                      MouseDoubleClick="TokensGrid_MouseDoubleClick">
+            <TabControl Grid.Row="2">
 
-                <DataGrid.Columns>
-                    <DataGridTextColumn Header="Код" Binding="{Binding Code}" Width="60"/>
-                    <DataGridTextColumn Header="Тип лексемы" Binding="{Binding Type}" Width="*"/>
-                    <DataGridTextColumn Header="Лексема" Binding="{Binding Lexeme}" Width="150"/>
-                    <DataGridTextColumn Header="Местоположение" Binding="{Binding Location}" Width="200"/>
-                </DataGrid.Columns>
+               
+                <TabItem Header="Лексемы">
+                    <DataGrid Name="TokensGrid"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True"
+                              SelectionMode="Single"
+                              MouseDoubleClick="TokensGrid_MouseDoubleClick">
 
-            </DataGrid>
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Код" Binding="{Binding Code}" Width="60"/>
+                            <DataGridTextColumn Header="Тип лексемы" Binding="{Binding Type}" Width="*"/>
+                            <DataGridTextColumn Header="Лексема" Binding="{Binding Lexeme}" Width="150"/>
+                            <DataGridTextColumn Header="Местоположение" Binding="{Binding Location}" Width="200"/>
+                        </DataGrid.Columns>
+
+                    </DataGrid>
+                </TabItem>
+
+                
+                <TabItem Header="Ошибки">
+                    <DataGrid Name="ErrorGrid"
+                              AutoGenerateColumns="False"
+                              IsReadOnly="True">
+
+                        <DataGrid.Columns>
+                            <DataGridTextColumn Header="Строка" Binding="{Binding Line}" Width="60"/>
+                            <DataGridTextColumn Header="Позиция" Binding="{Binding Column}" Width="70"/>
+                            <DataGridTextColumn Header="Сообщение" Binding="{Binding Message}" Width="*"/>
+                            <DataGridTextColumn Header="Токен" Binding="{Binding Token.Lexeme}" Width="120"/>
+                        </DataGrid.Columns>
+
+                    </DataGrid>
+                </TabItem>
+
+            </TabControl>
 
         </Grid>
 
