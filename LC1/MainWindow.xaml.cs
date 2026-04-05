@@ -346,6 +346,7 @@ namespace LC1
             };
         }
 
+
         private List<Token> Scan(string text)
         {
             var tokens = new List<Token>();
@@ -617,7 +618,76 @@ namespace LC1
             return tokens;
         }
 
-        
+        public class SearchResult
+        {
+            public string Value { get; set; }
+            public int Line { get; set; }
+            public int Column { get; set; }
+            public int Length { get; set; }
+        }
+
+        private readonly Dictionary<string, string> SearchPatterns = new()
+{
+    { "Идентификатор", @"[A-Za-z$_][A-Za-z]*" },
+    { "Пароль", @"[A-Za-zА-Яа-я0-9!@#$%^&*()_+={}
+
+\[\]
+
+:;""'<>,.?/\\|~`-]{10,}" },
+    { "GUID", @"[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}" }
+};
+
+        private void SearchButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (SearchTypeBox.SelectedItem is not ComboBoxItem item)
+                return;
+
+            string type = item.Content.ToString();
+            string pattern = SearchPatterns[type];
+
+            string text = EditorTextBox.Text;
+            var results = new List<SearchResult>();
+
+            var lines = text.Split('\n');
+
+            for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++)
+            {
+                string line = lines[lineIndex];
+                var matches = System.Text.RegularExpressions.Regex.Matches(line, pattern);
+
+                foreach (System.Text.RegularExpressions.Match m in matches)
+                {
+                    results.Add(new SearchResult
+                    {
+                        Value = m.Value,
+                        Line = lineIndex + 1,
+                        Column = m.Index + 1,
+                        Length = m.Length
+                    });
+                }
+            }
+
+            SearchResultsGrid.ItemsSource = results;
+            SearchCountText.Text = $"Найдено совпадений: {results.Count}";
+        }
+
+        private void SearchResultsGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (SearchResultsGrid.SelectedItem is not SearchResult r)
+                return;
+
+            int lineStart = EditorTextBox.GetCharacterIndexFromLineIndex(r.Line - 1);
+            int start = lineStart + (r.Column - 1);
+
+            EditorTextBox.Focus();
+            EditorTextBox.Select(start, r.Length);
+            EditorTextBox.ScrollToLine(r.Line - 1);
+        }
+
+
+
+
+
 
         private void TokensGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
