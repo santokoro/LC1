@@ -16,7 +16,7 @@ namespace LC1
     {
         public string NodeType { get; set; }
         public Token Token { get; set; }
-        public List<AstNode> Children { get; set; } = new List<AstNode>();
+        public List<AstNode> Children { get; set; } = new();
     }
 
     public class Parser
@@ -25,28 +25,110 @@ namespace LC1
         private int position = 0;
         private readonly List<SyntaxError> errors = new();
 
-        private bool typeError = false;
-        private bool panicMode = false;
-
         private Token Current => position < tokens.Count ? tokens[position] : null;
+
+        // --- КОНТЕКСТНЫЕ ФЛАГИ ---
+        private bool afterConst = false;
+        private bool inType = false;
 
         public Parser(List<Token> tokens)
         {
-            this.tokens = tokens.Where(t => t.Code != (int)TokenKind.Space).ToList();
+            this.tokens = tokens
+                .Where(t => t.Code != (int)TokenKind.Space)
+                .ToList();
         }
 
-        private void SkipTo(params TokenKind[] kinds)
+        private void Next()
         {
-            while (Current != null && !kinds.Contains((TokenKind)Current.Code))
+            if (position < tokens.Count)
+                position++;
+        }
+
+        private bool Check(TokenKind kind) =>
+            Current != null && Current.Code == (int)kind;
+
+        private bool CheckKeyword(string keyword) =>
+            Current != null &&
+            Current.Code == (int)TokenKind.Keyword &&
+            Current.Lexeme == keyword;
+
+        private void AddError(string message)
+        {
+            errors.Add(new SyntaxError
+            {
+                Line = Current?.Line ?? 0,
+                Column = Current?.Start ?? 0,
+                Message = message,
+                Token = Current
+            });
+        }
+
+        private Token Fake(TokenKind kind, string lexeme)
+        {
+            return new Token
+            {
+                Code = (int)kind,
+                Lexeme = lexeme,
+                Line = Current?.Line ?? 0,
+                Start = Current?.Start ?? 0,
+                End = Current?.Start ?? 0
+            };
+        }
+
+        // ============================
+        // МУСОРНЫЕ ТОКЕНЫ (контекстные)
+        // ============================
+        private bool IsGarbage(Token t)
+        {
+            if (t == null) return false;
+
+            // 1) Error-токены — всегда мусор
+            if (t.Code == (int)TokenKind.Error)
+                return true;
+
+            // 2) неизвестные ключевые слова — мусор
+            if (t.Code == (int)TokenKind.Keyword &&
+                t.Lexeme != "const" &&
+                t.Lexeme != "val" &&
+                t.Lexeme != "Double")
+                return true;
+
+            // 3) после const допускается только val
+            if (afterConst)
+            {
+                if (!(t.Code == (int)TokenKind.Keyword && t.Lexeme == "val"))
+                    return true;
+            }
+
+            // 4) внутри типа допускается только Double
+            if (inType)
+            {
+                if (!(t.Code == (int)TokenKind.Keyword && t.Lexeme == "Double"))
+                    return true;
+            }
+
+            return false;
+        }
+
+        private void SkipGarbage()
+        {
+            while (IsGarbage(Current))
+            {
+                AddError($"Неожиданный токен '{Current.Lexeme}'");
                 Next();
+            }
         }
 
-        private int FindNext(TokenKind kind)
+        private bool ExistsAhead(Func<Token, bool> pred)
         {
-            for (int i = position; i < tokens.Count; i++)
-                if (tokens[i].Code == (int)kind)
-                    return i;
-            return -1;
+            int i = position;
+            while (i < tokens.Count && tokens[i].Code != (int)TokenKind.StatementEnd)
+            {
+                if (pred(tokens[i]))
+                    return true;
+                i++;
+            }
+            return false;
         }
 
         public AstNode ParseProgram()
@@ -55,19 +137,12 @@ namespace LC1
 
             while (Current != null)
             {
-                var decl = ParseDeclaration();
+                int startPos = position;
 
-                if (decl != null)
-                {
-                    program.Children.Add(decl);
-                }
-                else
-                {
-                    if (!panicMode)
-                        AddError($"Неожиданный токен: {Current?.Lexeme}");
+                program.Children.Add(ParseDeclaration());
 
+                if (position == startPos)
                     Next();
-                }
             }
 
             return program;
@@ -77,118 +152,101 @@ namespace LC1
         {
             var decl = new AstNode { NodeType = "Объявление" };
 
-            
+            SkipGarbage();
+
+            // const
+            afterConst = false;
             if (!CheckKeyword("const"))
             {
-                AddError("Ожидалось 'const'");
-                SkipTo(TokenKind.StatementEnd);
-                if (Check(TokenKind.StatementEnd)) Next();
-                return null;
+                if (!ExistsAhead(t => t.Code == (int)TokenKind.Keyword && t.Lexeme == "const"))
+                    AddError("Ожидалось 'const'");
+
+                decl.Children.Add(new AstNode { NodeType = "(восстановлено const)", Token = Fake(TokenKind.Keyword, "const") });
+            }
+            else
+            {
+                decl.Children.Add(new AstNode { NodeType = "const", Token = Current });
+                Next();
             }
 
-            decl.Children.Add(new AstNode { NodeType = "Модификатор", Token = Current });
-            Next();
+            // теперь ждём val
+            afterConst = true;
 
-            
+            SkipGarbage();
+
+            // val
             if (!CheckKeyword("val"))
             {
-                AddError("После 'const' ожидается 'val'");
-                SkipTo(TokenKind.StatementEnd);
-                if (Check(TokenKind.StatementEnd)) Next();
-                return decl;
+                if (!ExistsAhead(t => t.Code == (int)TokenKind.Keyword && t.Lexeme == "val"))
+                    AddError("После 'const' ожидается 'val'");
+
+                decl.Children.Add(new AstNode { NodeType = "(восстановлено val)", Token = Fake(TokenKind.Keyword, "val") });
+            }
+            else
+            {
+                decl.Children.Add(new AstNode { NodeType = "val", Token = Current });
+                Next();
             }
 
-            decl.Children.Add(new AstNode { NodeType = "КлючевоеСлово", Token = Current });
-            Next();
+            afterConst = false;
 
-            
+            SkipGarbage();
+
+            // identifier
             if (!Check(TokenKind.Identifier))
             {
-                AddError("Ожидается имя переменной");
-                SkipTo(TokenKind.StatementEnd);
-                if (Check(TokenKind.StatementEnd)) Next();
-                return decl;
+                if (!ExistsAhead(t => t.Code == (int)TokenKind.Identifier))
+                    AddError("Ожидается имя переменной");
+
+                decl.Children.Add(new AstNode { NodeType = "(восстановлено id)", Token = Fake(TokenKind.Identifier, "id") });
             }
-
-            decl.Children.Add(new AstNode { NodeType = "Идентификатор", Token = Current });
-            Next();
-
-            
-            typeError = false;
-            var type = ParseType();
-
-            if (typeError)
+            else
             {
-                
-                int semi = FindNext(TokenKind.StatementEnd);
-                if (semi == -1)
-                {
-                    AddError("Ожидается ';'");
-                    SkipTo(TokenKind.StatementEnd);
-                    if (Check(TokenKind.StatementEnd)) Next();
-                }
-                else
-                {
-                    var before = tokens[Math.Max(0, semi - 1)];
-                    errors.Add(new SyntaxError
-                    {
-                        Line = before.Line,
-                        Column = before.End + 1,
-                        Message = "Ожидается ';'",
-                        Token = before
-                    });
-
-                    position = semi;
-                    Next();
-                }
-
-                decl.Children.Add(type ?? new AstNode { NodeType = "Тип(ошибка)" });
-                return decl;
+                decl.Children.Add(new AstNode { NodeType = "Идентификатор", Token = Current });
+                Next();
             }
 
-            if (type == null)
-            {
-                SkipTo(TokenKind.StatementEnd);
-                if (Check(TokenKind.StatementEnd)) Next();
-                return decl;
-            }
+            SkipGarbage();
 
-            decl.Children.Add(type);
+            // type
+            decl.Children.Add(ParseType());
 
-            
+            SkipGarbage();
+
+            // =
             if (!Check(TokenKind.Assignment))
             {
-                AddError("Ожидается '='");
-                SkipTo(TokenKind.StatementEnd);
-                if (Check(TokenKind.StatementEnd)) Next();
-                return decl;
+                if (!ExistsAhead(t => t.Code == (int)TokenKind.Assignment))
+                    AddError("Ожидается '='");
+
+                decl.Children.Add(new AstNode { NodeType = "(восстановлено '=')", Token = Fake(TokenKind.Assignment, "=") });
             }
-
-            decl.Children.Add(new AstNode { NodeType = "Оператор", Token = Current });
-            Next();
-
-           
-            var expr = ParseExpression();
-            if (expr == null)
+            else
             {
-                SkipTo(TokenKind.StatementEnd);
-                if (Check(TokenKind.StatementEnd)) Next();
-                return decl;
+                decl.Children.Add(new AstNode { NodeType = "=", Token = Current });
+                Next();
             }
 
-            decl.Children.Add(expr);
+            SkipGarbage();
 
-            
+            // expression
+            decl.Children.Add(ParseExpression());
+
+            SkipGarbage();
+
+            // ;
             if (!Check(TokenKind.StatementEnd))
             {
-                AddError("Ожидается ';'");
-                SkipTo(TokenKind.StatementEnd);
-                if (Check(TokenKind.StatementEnd)) Next();
-                return decl;
-            }
+                if (!ExistsAhead(t => t.Code == (int)TokenKind.StatementEnd))
+                    AddError("Ожидается ';'");
 
-            decl.Children.Add(new AstNode { NodeType = "Разделитель", Token = Current });
-            Next();
+                decl.Children.Add(new AstNode { NodeType = "(восстановлено ';')", Token = Fake(TokenKind.StatementEnd, ";") });
+            }
+            else
+            {
+                decl.Children.Add(new AstNode { NodeType = ";", Token = Current });
+                Next();
+            }
 
             return decl;
         }
@@ -197,54 +255,86 @@ namespace LC1
         {
             var typeNode = new AstNode { NodeType = "Тип" };
 
+            SkipGarbage();
+
+            // :
             if (!Check(TokenKind.Colon))
             {
-                AddError("Ожидается ':' перед типом");
-                typeError = true;
-                return typeNode;
+                if (!ExistsAhead(t => t.Code == (int)TokenKind.Colon))
+                    AddError("Ожидается ':' перед типом");
+
+                typeNode.Children.Add(new AstNode { NodeType = "(восстановлено ':')", Token = Fake(TokenKind.Colon, ":") });
+            }
+            else
+            {
+                typeNode.Children.Add(new AstNode { NodeType = ":", Token = Current });
+                Next();
             }
 
-            typeNode.Children.Add(new AstNode { NodeType = "Двоеточие", Token = Current });
-            Next();
+            SkipGarbage();
 
+            // теперь ждём Double
+            inType = true;
+
+            // Double
             if (!CheckKeyword("Double"))
             {
-                AddError($"Ожидается тип Double, найдено '{Current?.Lexeme}'");
-                typeError = true;
-                return typeNode;
+                if (!ExistsAhead(t => t.Code == (int)TokenKind.Keyword && t.Lexeme == "Double"))
+                    AddError("Ожидается тип Double");
+
+                typeNode.Children.Add(new AstNode { NodeType = "(восстановлено Double)", Token = Fake(TokenKind.Keyword, "Double") });
+            }
+            else
+            {
+                typeNode.Children.Add(new AstNode { NodeType = "Double", Token = Current });
+                Next();
             }
 
-            typeNode.Children.Add(new AstNode { NodeType = "ИмяТипа", Token = Current });
-            Next();
+            inType = false;
 
             return typeNode;
         }
 
         private AstNode ParseExpression()
         {
+            SkipGarbage();
+
             if (Check(TokenKind.Minus))
             {
                 var minus = Current;
                 Next();
 
+                SkipGarbage();
+
                 var number = ParseNumber();
                 if (number == null)
                 {
                     AddError("После '-' ожидается число");
-                    return null;
+                    return new AstNode { NodeType = "(восстановлено число)", Token = Fake(TokenKind.RealNumber, "0") };
                 }
 
-                var node = new AstNode { NodeType = "УнарныйМинус" };
-                node.Children.Add(new AstNode { NodeType = "Оператор", Token = minus });
-                node.Children.Add(number);
-                return node;
+                return new AstNode
+                {
+                    NodeType = "УнарныйМинус",
+                    Children =
+                    {
+                        new AstNode { NodeType = "-", Token = minus },
+                        number
+                    }
+                };
             }
 
             var num = ParseNumber();
             if (num == null)
             {
-                AddError("Ожидается число");
-                return null;
+                if (!ExistsAhead(t =>
+                    t.Code == (int)TokenKind.RealNumber ||
+                    t.Code == (int)TokenKind.UnsignedInteger))
+                {
+                    AddError("Ожидается число");
+                }
+
+                return new AstNode { NodeType = "(восстановлено число)", Token = Fake(TokenKind.RealNumber, "0") };
             }
 
             return num;
@@ -260,27 +350,6 @@ namespace LC1
             }
 
             return null;
-        }
-
-        private bool Check(TokenKind kind) =>
-            Current != null && Current.Code == (int)kind;
-
-        private bool CheckKeyword(string keyword) =>
-            Current != null &&
-            Current.Code == (int)TokenKind.Keyword &&
-            Current.Lexeme == keyword;
-
-        private void Next() => position++;
-
-        private void AddError(string message)
-        {
-            errors.Add(new SyntaxError
-            {
-                Line = Current?.Line ?? 0,
-                Column = Current?.Start ?? 0,
-                Message = message,
-                Token = Current
-            });
         }
 
         public List<SyntaxError> GetErrors() => errors;
