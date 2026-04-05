@@ -25,6 +25,9 @@ namespace LC1
         private int pos = 0;
         private readonly List<SyntaxError> errors = new();
 
+        
+        private bool errorHappened = false;
+
         private Token Current =>
             pos < tokens.Count ? tokens[pos] : new Token
             {
@@ -52,62 +55,58 @@ namespace LC1
 
         private void AddError(string msg)
         {
-            errors.Add(new SyntaxError
+            
+            if (!errorHappened)
             {
-                Line = Current.Line,
-                Column = Current.Start,
-                Message = msg,
-                Token = Current
-            });
-        }
-
-        private void SkipTo(params int[] codes)
-        {
-            while (!AtEnd())
-            {
-                int c = Current.Code;
-                foreach (var x in codes)
-                    if (c == x) return;
-                Next();
+                errors.Add(new SyntaxError
+                {
+                    Line = Current.Line,
+                    Column = Current.Start,
+                    Message = msg,
+                    Token = Current
+                });
+                errorHappened = true; 
             }
         }
 
         private bool ExpectKeyword(string lexeme, string msg, params int[] follow)
         {
-            if (!AtEnd() &&
-                Current.Code == (int)TokenKind.Keyword &&
-                Current.Lexeme == lexeme)
+            if (!AtEnd() && Current.Code == (int)TokenKind.Keyword && Current.Lexeme == lexeme)
             {
                 Next();
+                errorHappened = false; 
                 return true;
             }
 
-            if (AtEnd())
-            {
-                AddError(msg);
-                return false;
-            }
-
-            int startPos = pos;
             AddError(msg);
 
-            SkipTo((int)TokenKind.Keyword, (int)TokenKind.Identifier,
-                   (int)TokenKind.Colon, (int)TokenKind.StatementEnd);
-
-            if (!AtEnd() &&
-                Current.Code == (int)TokenKind.Keyword &&
-                Current.Lexeme == lexeme)
+            
+            int tempPos = pos;
+            while (tempPos < tokens.Count)
             {
-                Next();
-                return true;
+                var t = tokens[tempPos];
+                if (t.Code == (int)TokenKind.Keyword && t.Lexeme == lexeme)
+                {
+                    pos = tempPos + 1; 
+                    errorHappened = false; 
+                    return true;
+                }
+                if (t.Code == (int)TokenKind.StatementEnd) break;
+                tempPos++;
             }
 
-            if (AtEnd() || follow.Contains(Current.Code))
-                return false;
-
-            if (pos == startPos && !AtEnd())
-                Next();
-
+          
+            tempPos = pos;
+            while (tempPos < tokens.Count)
+            {
+                var t = tokens[tempPos];
+                if (follow.Contains(t.Code) || t.Code == (int)TokenKind.StatementEnd)
+                {
+                    pos = tempPos;
+                    return false;
+                }
+                tempPos++;
+            }
             return false;
         }
 
@@ -116,48 +115,50 @@ namespace LC1
             if (!AtEnd() && Current.Code == code)
             {
                 Next();
+                errorHappened = false; 
                 return true;
             }
 
-            if (AtEnd())
-            {
-                AddError(msg);
-                return false;
-            }
-
-            int startPos = pos;
             AddError(msg);
 
-            var sync = new List<int> { code };
-            sync.AddRange(follow);
-
-            SkipTo(sync.ToArray());
-
-            if (!AtEnd() && Current.Code == code)
+           
+            int tempPos = pos;
+            while (tempPos < tokens.Count)
             {
-                Next();
-                return true;
+                var t = tokens[tempPos];
+                if (t.Code == code)
+                {
+                    pos = tempPos + 1;
+                    errorHappened = false;
+                    return true;
+                }
+                if (t.Code == (int)TokenKind.StatementEnd) break;
+                tempPos++;
             }
 
-            if (AtEnd() || follow.Contains(Current.Code))
-                return false;
-
-            if (pos == startPos && !AtEnd())
-                Next();
-
+      
+            tempPos = pos;
+            while (tempPos < tokens.Count)
+            {
+                var t = tokens[tempPos];
+                if (follow.Contains(t.Code) || t.Code == (int)TokenKind.StatementEnd)
+                {
+                    pos = tempPos;
+                    return false;
+                }
+                tempPos++;
+            }
             return false;
         }
 
         public AstNode ParseProgram()
         {
             var program = new AstNode { NodeType = "Программа" };
-
-            if (AtEnd())
-                return program;
+            if (AtEnd()) return program;
 
             program.Children.Add(ParseDeclaration());
 
-            if (!AtEnd())
+            if (!AtEnd() && !errorHappened) 
                 AddError("Неожиданный текст после объявления");
 
             return program;
@@ -166,43 +167,21 @@ namespace LC1
         private AstNode ParseDeclaration()
         {
             var decl = new AstNode { NodeType = "Объявление" };
+            errorHappened = false; 
 
-            // const
-            ExpectKeyword("const", "Ожидалось 'const'",
-                (int)TokenKind.Keyword, (int)TokenKind.Identifier,
-                (int)TokenKind.Colon, (int)TokenKind.StatementEnd);
+            ExpectKeyword("const", "Ожидалось 'const'", (int)TokenKind.Keyword, (int)TokenKind.Identifier);
+            ExpectKeyword("val", "После 'const' ожидается 'val'", (int)TokenKind.Identifier, (int)TokenKind.Colon);
+            Expect((int)TokenKind.Identifier, "Ожидается имя переменной", (int)TokenKind.Colon);
+            Expect((int)TokenKind.Colon, "Ожидается ':' перед типом", (int)TokenKind.Keyword);
+            ExpectKeyword("Double", "Ожидается тип Double", (int)TokenKind.Assignment);
+            Expect((int)TokenKind.Assignment, "Ожидается '='", (int)TokenKind.RealNumber, (int)TokenKind.UnsignedInteger);
 
-            // val
-            ExpectKeyword("val", "После 'const' ожидается 'val'",
-                (int)TokenKind.Identifier, (int)TokenKind.Colon,
-                (int)TokenKind.StatementEnd);
-
-            // id
-            Expect((int)TokenKind.Identifier, "Ожидается имя переменной",
-                (int)TokenKind.Colon, (int)TokenKind.StatementEnd);
-
-            // :
-            Expect((int)TokenKind.Colon, "Ожидается ':' перед типом",
-                (int)TokenKind.Keyword, (int)TokenKind.StatementEnd);
-
-            // Double
-            ExpectKeyword("Double", "Ожидается тип Double",
-                (int)TokenKind.Assignment, (int)TokenKind.StatementEnd);
-
-            // =
-            Expect((int)TokenKind.Assignment, "Ожидается '='",
-                (int)TokenKind.RealNumber, (int)TokenKind.UnsignedInteger,
-                (int)TokenKind.StatementEnd);
-
-            // число
-            if (!Expect((int)TokenKind.RealNumber, "Ожидается число",
-                (int)TokenKind.StatementEnd))
+           
+            if (!Expect((int)TokenKind.RealNumber, "Ожидается число", (int)TokenKind.StatementEnd))
             {
-                Expect((int)TokenKind.UnsignedInteger, "Ожидается число",
-                    (int)TokenKind.StatementEnd);
+                Expect((int)TokenKind.UnsignedInteger, "Ожидается число", (int)TokenKind.StatementEnd);
             }
 
-            // ;
             Expect((int)TokenKind.StatementEnd, "Ожидается ';'");
 
             return decl;
@@ -213,17 +192,11 @@ namespace LC1
         public string PrintAst(AstNode node, string indent = "")
         {
             if (node == null) return "";
-
             string result = indent + "└─ " + node.NodeType;
-
-            if (node.Token != null)
-                result += $" ({node.Token.Lexeme})";
-
+            if (node.Token != null) result += $" ({node.Token.Lexeme})";
             result += "\n";
-
             foreach (var child in node.Children)
                 result += PrintAst(child, indent + "   ");
-
             return result;
         }
     }
