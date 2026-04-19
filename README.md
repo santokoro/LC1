@@ -20,8 +20,10 @@
 
 Следуя введенному формальному определению грамматики, представим G[⟨A⟩] ее составляющими: 
 − Z = < A > 
+
 − V_T  = {a…z,A…Z,0…9,=,.,;,-,_,:} 
-− V_N  = {<A>, <const>, <space>, <value>, <spaceafter>, <id>, <after_colon>, <type>, <equal>, <int>, <intrem>, <double>, <before>, <digit>}
+
+− V_N  = { <A>, <CONST>, <SPACE>, < VALUE>, <SPACEAFTER>, <ID>, <AFTERCOLON>, <TYPE>, <EQUAL>, <INT>, <INTREM>, <DOUBLE>, <BEFORE>}
 
 
 Классификация по Холмскому:
