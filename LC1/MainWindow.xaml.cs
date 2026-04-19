@@ -723,7 +723,7 @@ namespace LC1
                 }
                 else if (type == "GUID (Regex)")
                 {
-                    // Используем Regex для поиска GUID
+                    
                     string pattern = @"\b[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\b";
                     var matches = System.Text.RegularExpressions.Regex.Matches(text, pattern, RegexOptions.Multiline);
 
@@ -743,7 +743,7 @@ namespace LC1
                 }
                 else if (type == "GUID (Автомат)")
                 {
-                    // Используем конечный автомат для поиска GUID
+                    
                     var guidResults = GUIDAutomaton.FindAll(text);
 
                     foreach (var guid in guidResults)
@@ -833,35 +833,35 @@ namespace LC1
             {
                 if (state == State.Error) return State.Error;
 
-                // Состояния S0-S8 (первые 8 hex символов)
+                
                 if (state >= State.S0 && state <= State.S7 && IsHexChar(c))
                     return state + 1;
 
                 if (state == State.S8 && c == '-')
                     return State.S9;
 
-                // Состояния S9-S13 (следующие 4 hex)
+                
                 if (state >= State.S9 && state <= State.S12 && IsHexChar(c))
                     return state + 1;
 
                 if (state == State.S13 && c == '-')
                     return State.S14;
 
-                // Состояния S14-S18 (следующие 4 hex)
+                
                 if (state >= State.S14 && state <= State.S17 && IsHexChar(c))
                     return state + 1;
 
                 if (state == State.S18 && c == '-')
                     return State.S19;
 
-                // Состояния S19-S23 (следующие 4 hex)
+                
                 if (state >= State.S19 && state <= State.S22 && IsHexChar(c))
                     return state + 1;
 
                 if (state == State.S23 && c == '-')
                     return State.S24;
 
-                // Состояния S24-S36 (последние 12 hex)
+               
                 if (state >= State.S24 && state <= State.S35 && IsHexChar(c))
                     return state + 1;
 
@@ -880,7 +880,7 @@ namespace LC1
                 {
                     char c = text[i];
 
-                    // Обновляем позицию
+                    
                     if (c == '\n')
                     {
                         currentLine++;
@@ -906,7 +906,7 @@ namespace LC1
                         }
                         else
                         {
-                            // Если достигли терминального состояния, сохраняем GUID
+                            
                             if (currentState == State.S36 && startIndex >= 0)
                             {
                                 string guid = text.Substring(startIndex, i - startIndex);
@@ -917,7 +917,7 @@ namespace LC1
                                 results.Add((startIndex, i - 1, guid, guidLine, guidColumn));
                             }
 
-                            // Сброс и попытка начать заново с текущего символа
+                            
                             if (IsHexChar(c))
                             {
                                 startIndex = i;
@@ -932,7 +932,7 @@ namespace LC1
                     }
                 }
 
-                // Проверка в конце строки
+               
                 if (currentState == State.S36 && startIndex >= 0)
                 {
                     string guid = text.Substring(startIndex, text.Length - startIndex);
