@@ -15,7 +15,7 @@ namespace LC1
     {
         private static readonly HashSet<char> ForbiddenChars = new HashSet<char>
         {
-            '@', '#', '%', '$', '^', '&', '~', '`'
+            '@', '#', '%', '$', '^', '&', '~', '`', '?'
         };
 
         public static List<LexicalError> Validate(List<Token> tokens)

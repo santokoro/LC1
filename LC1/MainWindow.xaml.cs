@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -640,15 +641,15 @@ namespace LC1
         }
 
         private readonly Dictionary<string, string> SearchPatterns = new()
-{
-    { "Идентификатор", @"[A-Za-z$_][A-Za-z]*" },
-    { "Пароль", @"[A-Za-zА-Яа-я0-9!@#$%^&*()_+={}
+        {
+            { "Идентификатор", @"[A-Za-z$_][A-Za-z]*" },
+            { "Пароль", @"[A-Za-zА-Яа-я0-9!@#$%^&*()_+={}
 
 \[\]
 
 :;""'<>,.?/\\|~`-]{10,}" },
-    { "GUID", @"[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}" }
-};
+            { "GUID", @"[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}" }
+        };
 
         private void SearchButton_Click(object sender, RoutedEventArgs e)
         {
@@ -666,9 +667,9 @@ namespace LC1
             for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++)
             {
                 string line = lines[lineIndex];
-                var matches = System.Text.RegularExpressions.Regex.Matches(line, pattern);
+                var matches = Regex.Matches(line, pattern);
 
-                foreach (System.Text.RegularExpressions.Match m in matches)
+                foreach (Match m in matches)
                 {
                     results.Add(new SearchResult
                     {
