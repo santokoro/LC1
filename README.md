@@ -15,7 +15,13 @@
 3)	“const val pi: Double = 3.14;”
 
 Разработанная граматика: 
-<img width="660" height="335" alt="image" src="https://github.com/user-attachments/assets/622401bd-9f33-41f6-aba1-1edd24656a76" />
+<img width="669" height="350" alt="image" src="https://github.com/user-attachments/assets/5bbb9c46-4667-4ff7-836c-f3c34e837fa0" />
+
+
+Следуя введенному формальному определению грамматики, представим G[⟨A⟩] ее составляющими: 
+− Z = < A > 
+− V_T  = {a…z,A…Z,0…9,=,.,;,-,_,:} 
+− V_N  = {<A>, <const>, <space>, <value>, <spaceafter>, <id>, <after_colon>, <type>, <equal>, <int>, <intrem>, <double>, <before>, <digit>}
 
 
 Классификация по Холмскому:
