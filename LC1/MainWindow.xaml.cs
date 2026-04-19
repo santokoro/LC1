@@ -11,26 +11,26 @@ using System.Windows.Input;
 
 namespace LC1
 {
-   
+
 
     public enum TokenKind
     {
-        UnsignedInteger = 1,      
-        Identifier = 2,           
-        RealNumber = 3,           
+        UnsignedInteger = 1,
+        Identifier = 2,
+        RealNumber = 3,
 
-        Assignment = 10,          
-        Space = 11,               
-        Keyword = 14,             
-        StatementEnd = 16,        
-        Colon = 17,               
+        Assignment = 10,
+        Space = 11,
+        Keyword = 14,
+        StatementEnd = 16,
+        Colon = 17,
 
-        Plus = 20,               
-        Minus = 21,               
-        Multiply = 22,            
-        Divide = 23,              
+        Plus = 20,
+        Minus = 21,
+        Multiply = 22,
+        Divide = 23,
 
-        Error = 99                
+        Error = 99
     }
 
     public class Token
@@ -46,7 +46,7 @@ namespace LC1
         public string Location => $"строка {Line}, {Start}-{End}";
     }
 
-    
+
 
     public partial class MainWindow : Window
     {
@@ -88,8 +88,8 @@ namespace LC1
             CommandBindings.Add(new CommandBinding(NavigationCommands.Refresh, (s, e) => RunCompiler()));
             CommandBindings.Add(new CommandBinding(ApplicationCommands.Close, (s, e) => MenuExit_Click(s, e)));
         }
-        
-        
+
+
 
         private void NewFile()
         {
@@ -171,11 +171,11 @@ namespace LC1
 
                 process.Start();
 
-                
+
                 process.StandardInput.WriteLine(EditorTextBox.Text);
                 process.StandardInput.Close();
 
-                
+
                 string output = process.StandardOutput.ReadToEnd();
                 process.WaitForExit();
 
@@ -230,7 +230,7 @@ namespace LC1
         private void MenuSave_Click(object sender, RoutedEventArgs e) => SaveFile();
         private void MenuSaveAs_Click(object sender, RoutedEventArgs e) => SaveFileAs();
 
-        
+
 
         private void MenuRun_Click(object sender, RoutedEventArgs e) => RunCompiler();
 
@@ -240,23 +240,36 @@ namespace LC1
 
             try
             {
-                
                 var tokens = Scan(source);
                 TokensGrid.ItemsSource = tokens;
 
-                
+                var lexErrors = LexicalValidator.Validate(tokens);
+
                 var parser = new Parser(tokens);
                 var ast = parser.ParseProgram();
-                var errors = parser.GetErrors();
-                ErrorGrid.ItemsSource = parser.GetErrors();
+                var parseErrors = parser.GetErrors();
 
-
-
-                if (errors.Any())
+                var lexAsSyntax = lexErrors.Select(le => new SyntaxError
                 {
-                    ShowSyntaxErrors(errors);
+                    Line = le.Line,
+                    Column = le.Column,
+                    Message = le.Message,
+                    Token = le.Token
+                }).ToList();
 
-                    
+                var lexKeys = new HashSet<(int Line, int Col)>(
+                    lexAsSyntax.Select(e => (e.Line, e.Column)));
+                var parseWithoutLexDup = parseErrors
+                    .Where(pe => !lexKeys.Contains((pe.Line, pe.Column)))
+                    .ToList();
+                var allErrors = lexAsSyntax.Concat(parseWithoutLexDup).ToList();
+
+                ErrorGrid.ItemsSource = allErrors;
+
+                if (allErrors.Any())
+                {
+                    ShowSyntaxErrors(allErrors);
+
                     string astText = parser.PrintAst(ast);
                     MessageBox.Show($"Дерево разбора (с ошибками):\n\n{astText}",
                                   "Результат парсинга",
@@ -265,9 +278,8 @@ namespace LC1
                 }
                 else
                 {
-                    
                     string astText = parser.PrintAst(ast);
-                    MessageBox.Show($" Синтаксических ошибок нет!\n\nДерево разбора:\n{astText}",
+                    MessageBox.Show($"Синтаксических ошибок нет!\n\nДерево разбора:\n{astText}",
                                   "Успех",
                                   MessageBoxButton.OK,
                                   MessageBoxImage.Information);
@@ -281,6 +293,7 @@ namespace LC1
                               MessageBoxImage.Error);
             }
         }
+
 
         private void RunAntlrParser_Click(object sender, RoutedEventArgs e)
         {
@@ -298,7 +311,7 @@ namespace LC1
                 MessageBox.Show("ANTLR: ошибок нет!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
             }
 
-            
+
             string pretty = PrettyTreePrinter.Print(tree, new KotlinConstParser(null));
             MessageBox.Show(pretty, "ANTLR AST");
 
@@ -307,13 +320,13 @@ namespace LC1
 
         private void ShowSyntaxErrors(List<SyntaxError> errors)
         {
-            
+
             string message = " Найдены ошибки синтаксиса:\n\n";
             foreach (var error in errors)
             {
                 message += $"Строка {error.Line}, позиция {error.Column}: {error.Message}\n";
 
-                
+
                 try
                 {
                     int lineStart = EditorTextBox.GetCharacterIndexFromLineIndex(error.Line - 1);
@@ -326,7 +339,7 @@ namespace LC1
                 catch { }
             }
 
-           
+
             MessageBox.Show(message, "Ошибки синтаксиса",
                            MessageBoxButton.OK,
                            MessageBoxImage.Warning);
@@ -359,7 +372,7 @@ namespace LC1
             {
                 char c = text[i];
 
-                
+
                 if (c == '\r') { i++; continue; }
                 if (c == '\n')
                 {
@@ -369,7 +382,7 @@ namespace LC1
                     continue;
                 }
 
-                
+
                 if (c == ' ' || c == '\t')
                 {
                     tokens.Add(new Token
@@ -386,7 +399,7 @@ namespace LC1
                     continue;
                 }
 
-                
+
                 if (char.IsLetter(c) || c == '_')
                 {
                     int startCol = col;
@@ -414,7 +427,7 @@ namespace LC1
                     continue;
                 }
 
-                
+
                 if (char.IsDigit(c) || c == '.')
                 {
                     int startCol = col;
@@ -424,7 +437,7 @@ namespace LC1
                     bool hasDigitsBeforeDot = false;
                     bool hasDigitsAfterDot = false;
 
-                    
+
                     if (char.IsDigit(c))
                     {
                         hasDigitsBeforeDot = true;
@@ -435,7 +448,7 @@ namespace LC1
                         }
                     }
 
-                    
+
                     if (i < text.Length && text[i] == '.')
                     {
                         hasDot = true;
@@ -497,7 +510,7 @@ namespace LC1
                     continue;
                 }
 
-                
+
                 if (c == '+')
                 {
                     tokens.Add(new Token
@@ -513,7 +526,7 @@ namespace LC1
                     continue;
                 }
 
-                
+
                 if (c == '-')
                 {
                     tokens.Add(new Token
@@ -529,7 +542,7 @@ namespace LC1
                     continue;
                 }
 
-               
+
                 if (c == '*')
                 {
                     tokens.Add(new Token
@@ -545,7 +558,7 @@ namespace LC1
                     continue;
                 }
 
-               
+
                 if (c == '/')
                 {
                     tokens.Add(new Token
@@ -561,7 +574,7 @@ namespace LC1
                     continue;
                 }
 
-               
+
                 if (c == '=')
                 {
                     tokens.Add(new Token
@@ -577,7 +590,7 @@ namespace LC1
                     continue;
                 }
 
-                
+
                 if (c == ';')
                 {
                     tokens.Add(new Token
@@ -593,7 +606,7 @@ namespace LC1
                     continue;
                 }
 
-                
+
                 if (c == ':')
                 {
                     tokens.Add(new Token
@@ -705,7 +718,7 @@ namespace LC1
             }
         }
 
-        
+
 
         private void Undo()
         {
@@ -735,18 +748,18 @@ namespace LC1
         private void Undo_Click(object sender, RoutedEventArgs e) => Undo();
         private void Redo_Click(object sender, RoutedEventArgs e) => Redo();
 
-        
+
 
         private void Copy_Click(object sender, RoutedEventArgs e) => EditorTextBox.Copy();
         private void Cut_Click(object sender, RoutedEventArgs e) => EditorTextBox.Cut();
         private void Paste_Click(object sender, RoutedEventArgs e) => EditorTextBox.Paste();
 
-       
+
 
         private void MenuAbout_Click(object sender, RoutedEventArgs e) => new AboutWindow().ShowDialog();
         private void MenuHelp_Click(object sender, RoutedEventArgs e) => new HelpWindow().ShowDialog();
 
-       
+
 
         private void ApplyFontSize(double size)
         {
@@ -782,7 +795,7 @@ namespace LC1
                 ApplyFontSize(size);
         }
 
-        
+
 
         private void MenuExit_Click(object sender, RoutedEventArgs e)
         {
@@ -851,7 +864,7 @@ namespace LC1
             LineNumbersScroll.ScrollToVerticalOffset(e.VerticalOffset);
         }
 
-        
+
 
         private void Window_DragEnter(object sender, DragEventArgs e)
         {
@@ -878,7 +891,7 @@ namespace LC1
             this.Title = $"Compiler — {Path.GetFileName(path)}";
         }
 
-        
+
 
         private void UpdateStatusBar()
         {
@@ -896,4 +909,3 @@ namespace LC1
         }
     }
 }
-

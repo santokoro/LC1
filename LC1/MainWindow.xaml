@@ -22,7 +22,6 @@
 
     <DockPanel>
 
-        <!-- МЕНЮ -->
         <Menu DockPanel.Dock="Top">
             <MenuItem Header="Файл">
                 <MenuItem Header="Создать" Click="MenuNew_Click"/>
@@ -63,12 +62,10 @@
             </MenuItem>
         </Menu>
 
-        <!-- СТАТУСБАР -->
         <StatusBar DockPanel.Dock="Bottom">
             <TextBlock Name="StatusBarText" Text="Готово"/>
         </StatusBar>
 
-        <!-- ТУЛБАР -->
         <ToolBarTray DockPanel.Dock="Top">
             <ToolBar>
                 <Button ToolTip ="Создать" Click="MenuNew_Click">
@@ -151,7 +148,6 @@
             </ToolBar>
         </ToolBarTray>
 
-        <!-- ОСНОВНОЙ GRID -->
         <Grid>
 
             <Grid.RowDefinitions>
@@ -160,7 +156,6 @@
                 <RowDefinition Height="2*"/>
             </Grid.RowDefinitions>
 
-            <!-- РЕДАКТОР -->
             <Grid Grid.Row="0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="40"/>
@@ -196,14 +191,12 @@
                           Background="Gray"
                           ShowsPreview="True"/>
 
-            <!-- НИЖНЯЯ ЧАСТЬ: ЛЕВАЯ + ПРАВАЯ ПАНЕЛЬ -->
             <Grid Grid.Row="2">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
                     <ColumnDefinition Width="420"/>
                 </Grid.ColumnDefinitions>
 
-                <!-- ЛЕВАЯ ЧАСТЬ -->
                 <TabControl Grid.Column="0">
 
                     <TabItem Header="Лексемы">
@@ -236,7 +229,6 @@
 
                 </TabControl>
 
-                <!-- ПРАВАЯ ПАНЕЛЬ ПОИСКА -->
                 <Border Grid.Column="1" Background="#f3f3f3" BorderBrush="Gray" BorderThickness="1" Padding="10">
                     <Grid>
                         <Grid.RowDefinitions>
@@ -244,7 +236,6 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
-                            <!-- для счётчика -->
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
 
@@ -270,7 +261,6 @@
                 Click="SearchButton_Click"
                 Margin="0 0 0 10"/>
 
-                        <!-- ВОТ ЭТОТ СЧЁТЧИК -->
                         <TextBlock Grid.Row="4"
                    Name="SearchCountText"
                    FontWeight="Bold"
