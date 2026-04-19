@@ -18,12 +18,8 @@
 <img width="669" height="350" alt="image" src="https://github.com/user-attachments/assets/5bbb9c46-4667-4ff7-836c-f3c34e837fa0" />
 
 
-Следуя введенному формальному определению грамматики, представим G[⟨A⟩] ее составляющими: 
-− Z = < A > 
+<img width="1324" height="146" alt="image" src="https://github.com/user-attachments/assets/5ce14c93-e9dd-400d-87c9-4b2cee3bf6eb" />
 
-− V_T  = {a…z,A…Z,0…9,=,.,;,-,_,:} 
-
-− V_N  = { <A>, <CONST>, <SPACE>, < VALUE>, <SPACEAFTER>, <ID>, <AFTERCOLON>, <TYPE>, <EQUAL>, <INT>, <INTREM>, <DOUBLE>, <BEFORE>}
 
 
 Классификация по Холмскому:
