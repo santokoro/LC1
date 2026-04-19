@@ -15,21 +15,8 @@
 3)	“const val pi: Double = 3.14;”
 
 5. Разработанная граматика: 
-G[<Z>]:
-1) <START> -> 'const' <const> 
-2) <const> -> ' ' <space>
-3) <space> -> 'val' <value>
-4) <value> -> ' ' <spaceafter>
-5) <spaceafter> -> letter <id>
-6) <id> -> letter <id> | digit <id> | '_' <id> | ':'<after_colon>
-8) <after_colon> -> 'Double' <type> 
-9) <type> -> '=' <equal>
-10)<equal> = '-' <int> | digit <intrem> 
-11)<int> -> digit <intrem>
-12)<intrem> -> digit <intrem> | '.' <double> 
-13) <double> -> digit <before>
-14)<before> -> digit <before> |';'
-15)<digit> -> '0'|'...'|'9'
+<img width="660" height="335" alt="image" src="https://github.com/user-attachments/assets/622401bd-9f33-41f6-aba1-1edd24656a76" />
+
 
 6. Классификация по Холмскому:
 Данная грамматика является автоматной, так как соблюдается на ограничение формы записи правил:
