@@ -24,12 +24,11 @@ namespace LC1
         private readonly List<Token> tokens;
         private int pos = 0;
         private readonly List<SyntaxError> errors = new();
+        private bool errorReportedForCurrentConstruct = false;
 
-        
-        private bool errorHappened = false;
-
-        private Token Current =>
-            pos < tokens.Count ? tokens[pos] : new Token
+        private Token Current => pos < tokens.Count
+            ? tokens[pos]
+            : new Token
             {
                 Code = -1,
                 Lexeme = "",
@@ -40,23 +39,15 @@ namespace LC1
 
         public Parser(List<Token> tokens)
         {
-            this.tokens = tokens
-                .Where(t => t.Code != (int)TokenKind.Space)
-                .ToList();
+            this.tokens = tokens.Where(t => t.Code != (int)TokenKind.Space).ToList();
         }
 
         private bool AtEnd() => pos >= tokens.Count;
+        private void Next() { if (pos < tokens.Count) pos++; }
 
-        private void Next()
+        private void ReportError(string msg)
         {
-            if (pos < tokens.Count)
-                pos++;
-        }
-
-        private void AddError(string msg)
-        {
-            
-            if (!errorHappened)
+            if (!errorReportedForCurrentConstruct)
             {
                 errors.Add(new SyntaxError
                 {
@@ -65,126 +56,393 @@ namespace LC1
                     Message = msg,
                     Token = Current
                 });
-                errorHappened = true; 
+                errorReportedForCurrentConstruct = true;
             }
         }
 
-        private bool ExpectKeyword(string lexeme, string msg, params int[] follow)
-        {
-            if (!AtEnd() && Current.Code == (int)TokenKind.Keyword && Current.Lexeme == lexeme)
-            {
-                Next();
-                errorHappened = false; 
-                return true;
-            }
-
-            AddError(msg);
-
-            
-            int tempPos = pos;
-            while (tempPos < tokens.Count)
-            {
-                var t = tokens[tempPos];
-                if (t.Code == (int)TokenKind.Keyword && t.Lexeme == lexeme)
-                {
-                    pos = tempPos + 1; 
-                    errorHappened = false; 
-                    return true;
-                }
-                if (t.Code == (int)TokenKind.StatementEnd) break;
-                tempPos++;
-            }
-
-          
-            tempPos = pos;
-            while (tempPos < tokens.Count)
-            {
-                var t = tokens[tempPos];
-                if (follow.Contains(t.Code) || t.Code == (int)TokenKind.StatementEnd)
-                {
-                    pos = tempPos;
-                    return false;
-                }
-                tempPos++;
-            }
-            return false;
-        }
-
-        private bool Expect(int code, string msg, params int[] follow)
+        private bool Expect(int code, string errorMessage, params int[] follow)
         {
             if (!AtEnd() && Current.Code == code)
             {
                 Next();
-                errorHappened = false; 
                 return true;
             }
 
-            AddError(msg);
+            ReportError(errorMessage);
 
-           
-            int tempPos = pos;
-            while (tempPos < tokens.Count)
+            int temp = pos;
+            while (temp < tokens.Count)
             {
-                var t = tokens[tempPos];
-                if (t.Code == code)
+                if (tokens[temp].Code == code)
                 {
-                    pos = tempPos + 1;
-                    errorHappened = false;
+                    pos = temp + 1;
+                    errorReportedForCurrentConstruct = false;
                     return true;
                 }
-                if (t.Code == (int)TokenKind.StatementEnd) break;
-                tempPos++;
+                if (tokens[temp].Code == (int)TokenKind.StatementEnd)
+                    break;
+                temp++;
             }
+            return false;
+        }
 
-      
-            tempPos = pos;
-            while (tempPos < tokens.Count)
+        private bool Synchronize(params int[] follow)
+        {
+            int temp = pos;
+            while (temp < tokens.Count)
             {
-                var t = tokens[tempPos];
-                if (follow.Contains(t.Code) || t.Code == (int)TokenKind.StatementEnd)
+                if (follow.Contains(tokens[temp].Code) || tokens[temp].Code == (int)TokenKind.StatementEnd)
                 {
-                    pos = tempPos;
-                    return false;
+                    pos = temp;
+                    return true;
                 }
-                tempPos++;
+                temp++;
             }
+            pos = temp;
             return false;
         }
 
         public AstNode ParseProgram()
         {
             var program = new AstNode { NodeType = "Программа" };
-            if (AtEnd()) return program;
+            if (tokens.Count == 0)
+            {
+                var dummy = new Token { Code = -1, Lexeme = "", Line = 1, Start = 1, End = 1 };
+                errors.Add(new SyntaxError { Line = 1, Column = 1, Message = "Ожидалось 'const'", Token = dummy });
+                errors.Add(new SyntaxError { Line = 1, Column = 1, Message = "После 'const' ожидается 'val'", Token = dummy });
+                errors.Add(new SyntaxError { Line = 1, Column = 1, Message = "Ожидается имя переменной", Token = dummy });
+                errors.Add(new SyntaxError { Line = 1, Column = 1, Message = "Ожидается ':' перед типом", Token = dummy });
+                errors.Add(new SyntaxError { Line = 1, Column = 1, Message = "Ожидается тип Double", Token = dummy });
+                errors.Add(new SyntaxError { Line = 1, Column = 1, Message = "Ожидается '='", Token = dummy });
+                errors.Add(new SyntaxError { Line = 1, Column = 1, Message = "Ожидается число", Token = dummy });
+                errors.Add(new SyntaxError { Line = 1, Column = 1, Message = "Ожидается ';' в конце оператора", Token = dummy });
+                return program;
+            }
 
-            program.Children.Add(ParseDeclaration());
+            while (!AtEnd())
+            {
+                errorReportedForCurrentConstruct = false;
+                var decl = ParseDeclaration();
+                if (decl != null)
+                    program.Children.Add(decl);
 
-            if (!AtEnd() && !errorHappened) 
-                AddError("Неожиданный текст после объявления");
-
+                if (!AtEnd() && (Current.Code != (int)TokenKind.Keyword || Current.Lexeme != "const"))
+                {
+                    while (!AtEnd() && (Current.Code != (int)TokenKind.Keyword || Current.Lexeme != "const"))
+                    {
+                        var t = Current;
+                        if (t.Code == (int)TokenKind.StatementEnd)
+                        {
+                            errors.Add(new SyntaxError
+                            {
+                                Line = t.Line,
+                                Column = t.Start,
+                                Message = "Лишняя ';' после завершения объявления.",
+                                Token = t
+                            });
+                        }
+                        else if (t.Code != (int)TokenKind.Error)
+                        {
+                            errors.Add(new SyntaxError
+                            {
+                                Line = t.Line,
+                                Column = t.Start,
+                                Message = $"Неожиданный токен '{t.Lexeme}' после завершения объявления. Ожидалось 'const' или конец файла.",
+                                Token = t
+                            });
+                        }
+                        Next();
+                    }
+                }
+            }
             return program;
         }
 
         private AstNode ParseDeclaration()
         {
             var decl = new AstNode { NodeType = "Объявление" };
-            errorHappened = false; 
 
-            ExpectKeyword("const", "Ожидалось 'const'", (int)TokenKind.Keyword, (int)TokenKind.Identifier);
-            ExpectKeyword("val", "После 'const' ожидается 'val'", (int)TokenKind.Identifier, (int)TokenKind.Colon);
-            Expect((int)TokenKind.Identifier, "Ожидается имя переменной", (int)TokenKind.Colon);
-            Expect((int)TokenKind.Colon, "Ожидается ':' перед типом", (int)TokenKind.Keyword);
-            ExpectKeyword("Double", "Ожидается тип Double", (int)TokenKind.Assignment);
-            Expect((int)TokenKind.Assignment, "Ожидается '='", (int)TokenKind.RealNumber, (int)TokenKind.UnsignedInteger);
+            int startPos = pos;
+            int endPos = pos;
+            while (endPos < tokens.Count && tokens[endPos].Code != (int)TokenKind.StatementEnd)
+                endPos++;
+            bool suppressGarbageErrors = false;
+            bool headerInvalid = false;
 
-           
-            if (!Expect((int)TokenKind.RealNumber, "Ожидается число", (int)TokenKind.StatementEnd))
+            void AddErrorAt(string msg, Token t)
             {
-                Expect((int)TokenKind.UnsignedInteger, "Ожидается число", (int)TokenKind.StatementEnd);
+                errors.Add(new SyntaxError
+                {
+                    Line = t?.Line ?? (tokens.Count > 0 ? tokens[^1].Line : 1),
+                    Column = t?.Start ?? (tokens.Count > 0 ? tokens[^1].End + 1 : 1),
+                    Message = msg,
+                    Token = t
+                });
             }
 
-            Expect((int)TokenKind.StatementEnd, "Ожидается ';'");
+            int FindTokenAndCheckGarbage(int from, int code, string lexeme, string expectedName, out bool hasGarbage)
+            {
+                hasGarbage = false;
+                for (int i = from; i < endPos; i++)
+                {
+                    if (tokens[i].Code == code && (lexeme == null || tokens[i].Lexeme == lexeme))
+                    {
+                        if (i > from)
+                        {
+                            hasGarbage = true;
+                            if (!suppressGarbageErrors)
+                            {
+                                AddErrorAt($"Неожиданный токен '{tokens[from].Lexeme}' перед ожидаемым '{expectedName}'", tokens[from]);
+                            }
+                        }
+                        return i;
+                    }
+                }
+                return -1;
+            }
+
+            bool garbage;
+            int idxConst = FindTokenAndCheckGarbage(startPos, (int)TokenKind.Keyword, "const", "const", out garbage);
+            if (idxConst == -1)
+            {
+                AddErrorAt("Ожидалось 'const'", startPos < tokens.Count ? tokens[startPos] : null);
+                suppressGarbageErrors = true;
+                headerInvalid = true;
+                pos = startPos;
+            }
+            else
+            {
+                pos = idxConst + 1;
+            }
+
+            int idxVal = FindTokenAndCheckGarbage(pos, (int)TokenKind.Keyword, "val", "val", out garbage);
+            if (idxVal == -1)
+            {
+                AddErrorAt("После 'const' ожидается 'val'", pos < tokens.Count ? tokens[pos] : null);
+                suppressGarbageErrors = true;
+                headerInvalid = true;
+            }
+            else
+            {
+                pos = idxVal + 1;
+            }
+
+            if (headerInvalid)
+            {
+                if (pos < endPos && tokens[pos].Code == (int)TokenKind.Identifier)
+                {
+                    decl.Children.Add(new AstNode { NodeType = "Identifier", Token = tokens[pos] });
+                    pos++;
+                }
+                else
+                {
+                    AddErrorAt("Ожидается имя переменной", pos < tokens.Count ? tokens[pos] : null);
+                    if (pos < endPos) pos++;
+                }
+
+                if (pos < endPos && tokens[pos].Code == (int)TokenKind.Colon)
+                {
+                    pos++;
+                }
+                else
+                {
+                    AddErrorAt("Ожидается ':' перед типом", pos < tokens.Count ? tokens[pos] : null);
+                }
+
+                if (pos < endPos &&
+                    tokens[pos].Code == (int)TokenKind.Keyword &&
+                    tokens[pos].Lexeme == "Double")
+                {
+                    decl.Children.Add(new AstNode { NodeType = "Type", Token = tokens[pos] });
+                    pos++;
+                }
+                else
+                {
+                    AddErrorAt("Ожидается тип Double", pos < tokens.Count ? tokens[pos] : null);
+                }
+
+                if (endPos < tokens.Count && tokens[endPos].Code == (int)TokenKind.StatementEnd)
+                {
+                    pos = endPos + 1;
+                }
+                else
+                {
+                    AddErrorAt("Ожидается ';' в конце оператора", pos < tokens.Count ? tokens[pos] : null);
+                    pos = endPos;
+                }
+                return decl;
+            }
+
+            int idxId = FindTokenAndCheckGarbage(pos, (int)TokenKind.Identifier, null, "имя переменной", out garbage);
+            if (idxId == -1)
+            {
+                AddErrorAt("Ожидается имя переменной", pos < tokens.Count ? tokens[pos] : null);
+            }
+            else
+            {
+                decl.Children.Add(new AstNode { NodeType = "Identifier", Token = tokens[idxId] });
+                pos = idxId + 1;
+            }
+
+            int idxColon = FindTokenAndCheckGarbage(pos, (int)TokenKind.Colon, null, "':'", out garbage);
+            if (idxColon == -1)
+            {
+                AddErrorAt("Ожидается ':' перед типом", pos < tokens.Count ? tokens[pos] : null);
+            }
+            else
+            {
+                pos = idxColon + 1;
+            }
+
+            int idxDouble = FindTokenAndCheckGarbage(pos, (int)TokenKind.Keyword, "Double", "Double", out garbage);
+            if (idxDouble == -1)
+            {
+                AddErrorAt("Ожидается тип Double", pos < tokens.Count ? tokens[pos] : null);
+            }
+            else
+            {
+                decl.Children.Add(new AstNode { NodeType = "Type", Token = tokens[idxDouble] });
+                pos = idxDouble + 1;
+            }
+
+            int idxAssign = FindTokenAndCheckGarbage(pos, (int)TokenKind.Assignment, null, "'='", out garbage);
+            if (idxAssign == -1)
+            {
+                AddErrorAt("Ожидается '='", pos < tokens.Count ? tokens[pos] : null);
+            }
+            else
+            {
+                pos = idxAssign + 1;
+            }
+
+            int idxNumber = -1;
+            bool reportedBadNumberFormat = false;
+
+            for (int i = pos; i < endPos; i++)
+            {
+                if (tokens[i].Code == (int)TokenKind.RealNumber || tokens[i].Code == (int)TokenKind.UnsignedInteger)
+                {
+                    idxNumber = i;
+                    break;
+                }
+            }
+
+            if (idxNumber != -1)
+            {
+                var numTok = tokens[idxNumber];
+                string lex = numTok?.Lexeme ?? "";
+
+                if (System.Text.RegularExpressions.Regex.IsMatch(lex, @"^\d+\.\d+$"))
+                {
+                    decl.Children.Add(new AstNode { NodeType = "Number", Token = numTok });
+                    pos = idxNumber + 1;
+                }
+                else
+                {
+                    if (System.Text.RegularExpressions.Regex.IsMatch(lex, @"^\d+\.$"))
+                    {
+                        AddErrorAt($"Недопустимый формат числа: '{lex}'. После точки ожидаются цифры.", numTok);
+                        reportedBadNumberFormat = true;
+                        pos = idxNumber + 1;
+                    }
+                    else
+                    {
+                        if (System.Text.RegularExpressions.Regex.IsMatch(lex, @"^\d+$"))
+                        {
+                            AddErrorAt($"Ожидается число с дробной частью (через точку), найден '{lex}'", numTok);
+                            reportedBadNumberFormat = true;
+                            pos = idxNumber + 1;
+                        }
+                        else
+                        {
+                            AddErrorAt($"Недопустимый формат числа: '{lex}'", numTok);
+                            reportedBadNumberFormat = true;
+                            pos = idxNumber + 1;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                int idxLexError = -1;
+                for (int i = pos; i < endPos; i++)
+                {
+                    if (tokens[i].Code == (int)TokenKind.Error)
+                    {
+                        idxLexError = i;
+                        break;
+                    }
+                }
+
+                if (idxLexError != -1)
+                {
+                    reportedBadNumberFormat = true;
+                    pos = idxLexError + 1;
+                }
+                else
+                {
+                    int idxIdent = -1;
+                    for (int i = pos; i < endPos; i++)
+                    {
+                        if (tokens[i].Code == (int)TokenKind.Identifier)
+                        {
+                            idxIdent = i;
+                            break;
+                        }
+                    }
+
+                    if (idxIdent != -1)
+                    {
+                        AddErrorAt($"Ожидается число, найден '{tokens[idxIdent].Lexeme}'", tokens[idxIdent]);
+                        pos = idxIdent + 1;
+                    }
+                    else
+                    {
+                        AddErrorAt("Ожидается число", pos < tokens.Count ? tokens[pos] : (tokens.Count > 0 ? tokens[^1] : null));
+                    }
+                }
+            }
+
+            if (endPos < tokens.Count && tokens[endPos].Code == (int)TokenKind.StatementEnd)
+            {
+                if (pos < endPos && !reportedBadNumberFormat)
+                {
+                    AddErrorAt($"Неожиданный токен '{tokens[pos].Lexeme}' перед ';'", tokens[pos]);
+                }
+                pos = endPos + 1;
+            }
+            else
+            {
+                AddErrorAt("Ожидается ';' в конце оператора", pos < tokens.Count ? tokens[pos] : null);
+                pos = endPos;
+            }
+
 
             return decl;
+        }
+
+        private bool ExpectKeyword(string lexeme, string errorMessage)
+        {
+            if (!AtEnd() && Current.Code == (int)TokenKind.Keyword && Current.Lexeme == lexeme)
+            {
+                Next();
+                return true;
+            }
+
+            ReportError(errorMessage);
+            int temp = pos;
+            while (temp < tokens.Count)
+            {
+                if (tokens[temp].Code == (int)TokenKind.Keyword && tokens[temp].Lexeme == lexeme)
+                {
+                    pos = temp + 1;
+                    errorReportedForCurrentConstruct = false;
+                    return true;
+                }
+                if (tokens[temp].Code == (int)TokenKind.StatementEnd) break;
+                temp++;
+            }
+            return false;
         }
 
         public List<SyntaxError> GetErrors() => errors;
@@ -193,10 +451,11 @@ namespace LC1
         {
             if (node == null) return "";
             string result = indent + "└─ " + node.NodeType;
-            if (node.Token != null) result += $" ({node.Token.Lexeme})";
+            if (node.Token != null && !string.IsNullOrEmpty(node.Token.Lexeme))
+                result += $" ({node.Token.Lexeme})";
             result += "\n";
             foreach (var child in node.Children)
-                result += PrintAst(child, indent + "   ");
+                result += PrintAst(child, indent + "  ");
             return result;
         }
     }
