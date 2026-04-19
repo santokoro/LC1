@@ -171,6 +171,12 @@ namespace LC1
 
             void AddErrorAt(string msg, Token t)
             {
+                
+                if (t != null && t.Code == (int)TokenKind.Error)
+                {
+                    t = null;
+                }
+
                 errors.Add(new SyntaxError
                 {
                     Line = t?.Line ?? (tokens.Count > 0 ? tokens[^1].Line : 1),
@@ -179,27 +185,48 @@ namespace LC1
                     Token = t
                 });
             }
-
             int FindTokenAndCheckGarbage(int from, int code, string lexeme, string expectedName, out bool hasGarbage)
             {
                 hasGarbage = false;
+
                 for (int i = from; i < endPos; i++)
                 {
+                    
+                    if (tokens[i].Code == (int)TokenKind.Error)
+                        continue;
+
                     if (tokens[i].Code == code && (lexeme == null || tokens[i].Lexeme == lexeme))
                     {
                         if (i > from)
                         {
                             hasGarbage = true;
+
                             if (!suppressGarbageErrors)
                             {
-                                AddErrorAt($"Неожиданный токен '{tokens[from].Lexeme}' перед ожидаемым '{expectedName}'", tokens[from]);
+                                for (int j = from; j < i; j++)
+                                {
+                                    
+                                    if (tokens[j].Code == (int)TokenKind.Error)
+                                        continue;
+
+                                    AddErrorAt(
+                                        $"Неожиданный токен '{tokens[j].Lexeme}' перед ожидаемым '{expectedName}'",
+                                        tokens[j]
+                                    );
+                                }
                             }
                         }
                         return i;
                     }
                 }
+
                 return -1;
             }
+
+
+
+
+
 
             bool garbage;
             int idxConst = FindTokenAndCheckGarbage(startPos, (int)TokenKind.Keyword, "const", "const", out garbage);
@@ -229,6 +256,7 @@ namespace LC1
 
             if (headerInvalid)
             {
+                
                 if (pos < endPos && tokens[pos].Code == (int)TokenKind.Identifier)
                 {
                     decl.Children.Add(new AstNode { NodeType = "Identifier", Token = tokens[pos] });
@@ -237,9 +265,10 @@ namespace LC1
                 else
                 {
                     AddErrorAt("Ожидается имя переменной", pos < tokens.Count ? tokens[pos] : null);
-                    if (pos < endPos) pos++;
+                    
                 }
 
+                
                 if (pos < endPos && tokens[pos].Code == (int)TokenKind.Colon)
                 {
                     pos++;
@@ -249,6 +278,7 @@ namespace LC1
                     AddErrorAt("Ожидается ':' перед типом", pos < tokens.Count ? tokens[pos] : null);
                 }
 
+                
                 if (pos < endPos &&
                     tokens[pos].Code == (int)TokenKind.Keyword &&
                     tokens[pos].Lexeme == "Double")
@@ -261,6 +291,32 @@ namespace LC1
                     AddErrorAt("Ожидается тип Double", pos < tokens.Count ? tokens[pos] : null);
                 }
 
+                
+                if (pos < endPos && tokens[pos].Code == (int)TokenKind.Assignment)
+                {
+                    pos++;
+                }
+                else
+                {
+                    AddErrorAt("Ожидается '='", pos < tokens.Count ? tokens[pos] : null);
+                }
+
+
+                
+                if (pos < endPos &&
+                    (tokens[pos].Code == (int)TokenKind.RealNumber ||
+                     tokens[pos].Code == (int)TokenKind.UnsignedInteger))
+                {
+                    decl.Children.Add(new AstNode { NodeType = "Number", Token = tokens[pos] });
+                    pos++;
+                }
+                else
+                {
+                    AddErrorAt("Ожидается число", pos < tokens.Count ? tokens[pos] : null);
+                    if (pos < endPos) pos++;
+                }
+
+                
                 if (endPos < tokens.Count && tokens[endPos].Code == (int)TokenKind.StatementEnd)
                 {
                     pos = endPos + 1;
@@ -270,8 +326,10 @@ namespace LC1
                     AddErrorAt("Ожидается ';' в конце оператора", pos < tokens.Count ? tokens[pos] : null);
                     pos = endPos;
                 }
+
                 return decl;
             }
+
 
             int idxId = FindTokenAndCheckGarbage(pos, (int)TokenKind.Identifier, null, "имя переменной", out garbage);
             if (idxId == -1)
@@ -313,7 +371,15 @@ namespace LC1
             else
             {
                 pos = idxAssign + 1;
+
+                
+                while (pos < endPos && tokens[pos].Code == (int)TokenKind.Assignment)
+                {
+                    AddErrorAt("Лишний символ '='", tokens[pos]);
+                    pos++; 
+                }
             }
+
 
             int idxNumber = -1;
             bool reportedBadNumberFormat = false;
