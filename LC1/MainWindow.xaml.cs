@@ -5,6 +5,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -653,48 +654,324 @@ namespace LC1
         private void SearchButton_Click(object sender, RoutedEventArgs e)
         {
             if (SearchTypeBox.SelectedItem is not ComboBoxItem item)
+            {
+                MessageBox.Show("Выберите тип поиска", "Внимание",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
+            }
 
             string type = item.Content.ToString();
-            string pattern = SearchPatterns[type];
-
             string text = EditorTextBox.Text;
             var results = new List<SearchResult>();
 
-            var lines = text.Split('\n');
-
-            for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++)
+            if (string.IsNullOrWhiteSpace(text))
             {
-                string line = lines[lineIndex];
-                var matches = System.Text.RegularExpressions.Regex.Matches(line, pattern);
+                SearchResultsGrid.ItemsSource = null;
+                SearchCountText.Text = "Найдено совпадений: 0";
+                MessageBox.Show("Текст для поиска пуст", "Результат поиска",
+                    MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
 
-                foreach (System.Text.RegularExpressions.Match m in matches)
+            try
+            {
+                if (type == "Идентификатор")
                 {
-                    results.Add(new SearchResult
+                    string pattern = @"(?<![A-Za-z0-9$_])[A-Za-z$_][A-Za-z]*(?![A-Za-z0-9$_])";
+                    var matches = System.Text.RegularExpressions.Regex.Matches(text, pattern, RegexOptions.Multiline);
+
+                    foreach (System.Text.RegularExpressions.Match m in matches)
                     {
-                        Value = m.Value,
-                        Line = lineIndex + 1,
-                        Column = m.Index + 1,
-                        Length = m.Length
-                    });
+                        int lineNumber = GetLineNumberFromIndex(text, m.Index);
+                        int columnNumber = GetColumnNumberFromIndex(text, m.Index, lineNumber);
+
+                        results.Add(new SearchResult
+                        {
+                            Value = m.Value,
+                            Line = lineNumber,
+                            Column = columnNumber,
+                            Length = m.Length
+                        });
+                    }
                 }
+                else if (type == "Пароль")
+                {
+                    string pattern = @"^[A-Za-zА-Яа-я0-9!@#$%^&*()_+={}\[\]\:;""'<>,.?/\\|~` -]{10,}$";
+                    string[] lines = text.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
+
+                    foreach (string line in lines)
+                    {
+                        if (line.Length >= 10)
+                        {
+                            var match = System.Text.RegularExpressions.Regex.Match(line, pattern);
+                            if (match.Success)
+                            {
+                                int index = text.IndexOf(line, StringComparison.Ordinal);
+                                int lineNumber = GetLineNumberFromIndex(text, index);
+                                int columnNumber = GetColumnNumberFromIndex(text, index, lineNumber);
+
+                                results.Add(new SearchResult
+                                {
+                                    Value = line,
+                                    Line = lineNumber,
+                                    Column = columnNumber,
+                                    Length = line.Length
+                                });
+                            }
+                        }
+                    }
+                }
+                else if (type == "GUID (Regex)")
+                {
+                    // Используем Regex для поиска GUID
+                    string pattern = @"\b[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}\b";
+                    var matches = System.Text.RegularExpressions.Regex.Matches(text, pattern, RegexOptions.Multiline);
+
+                    foreach (System.Text.RegularExpressions.Match m in matches)
+                    {
+                        int lineNumber = GetLineNumberFromIndex(text, m.Index);
+                        int columnNumber = GetColumnNumberFromIndex(text, m.Index, lineNumber);
+
+                        results.Add(new SearchResult
+                        {
+                            Value = m.Value,
+                            Line = lineNumber,
+                            Column = columnNumber,
+                            Length = m.Length
+                        });
+                    }
+                }
+                else if (type == "GUID (Автомат)")
+                {
+                    // Используем конечный автомат для поиска GUID
+                    var guidResults = GUIDAutomaton.FindAll(text);
+
+                    foreach (var guid in guidResults)
+                    {
+                        results.Add(new SearchResult
+                        {
+                            Value = guid.value,
+                            Line = guid.line,
+                            Column = guid.column,
+                            Length = guid.value.Length
+                        });
+                    }
+                }
+            }
+            catch (System.Text.RegularExpressions.RegexParseException ex)
+            {
+                MessageBox.Show($"Ошибка в регулярном выражении: {ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Ошибка при поиске: {ex.Message}",
+                    "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
+                return;
             }
 
             SearchResultsGrid.ItemsSource = results;
-            SearchCountText.Text = $"Найдено совпадений: {results.Count}";
+
+            if (results.Count > 0)
+            {
+                SearchCountText.Text = $"Найдено совпадений: {results.Count}";
+                MessageBox.Show($"Найдено {results.Count} совпадений для типа \"{type}\"",
+                    "Результат поиска", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
+            else
+            {
+                SearchCountText.Text = "Ничего не найдено";
+                MessageBox.Show($"Ничего не найдено для типа \"{type}\"",
+                    "Результат поиска", MessageBoxButton.OK, MessageBoxImage.Information);
+            }
         }
 
-        private void SearchResultsGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        private int GetLineNumberFromIndex(string text, int index)
         {
-            if (SearchResultsGrid.SelectedItem is not SearchResult r)
-                return;
+            int line = 1;
+            for (int i = 0; i < index && i < text.Length; i++)
+            {
+                if (text[i] == '\n')
+                    line++;
+            }
+            return line;
+        }
 
-            int lineStart = EditorTextBox.GetCharacterIndexFromLineIndex(r.Line - 1);
-            int start = lineStart + (r.Column - 1);
+        private int GetColumnNumberFromIndex(string text, int index, int lineNumber)
+        {
+            int lineStart = 0;
+            int currentLine = 1;
 
-            EditorTextBox.Focus();
-            EditorTextBox.Select(start, r.Length);
-            EditorTextBox.ScrollToLine(r.Line - 1);
+            for (int i = 0; i < index && i < text.Length; i++)
+            {
+                if (text[i] == '\n')
+                {
+                    currentLine++;
+                    lineStart = i + 1;
+                }
+            }
+
+            return index - lineStart + 1;
+        }
+
+        public class GUIDAutomaton
+        {
+            private enum State
+            {
+                S0, S1, S2, S3, S4, S5, S6, S7, S8, S9, S10, S11, S12, S13, S14,
+                S15, S16, S17, S18, S19, S20, S21, S22, S23, S24, S25, S26, S27,
+                S28, S29, S30, S31, S32, S33, S34, S35, S36, Error
+            }
+
+            private static bool IsHexChar(char c)
+            {
+                return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
+            }
+
+            private static State NextState(State state, char c)
+            {
+                if (state == State.Error) return State.Error;
+
+                // Состояния S0-S8 (первые 8 hex символов)
+                if (state >= State.S0 && state <= State.S7 && IsHexChar(c))
+                    return state + 1;
+
+                if (state == State.S8 && c == '-')
+                    return State.S9;
+
+                // Состояния S9-S13 (следующие 4 hex)
+                if (state >= State.S9 && state <= State.S12 && IsHexChar(c))
+                    return state + 1;
+
+                if (state == State.S13 && c == '-')
+                    return State.S14;
+
+                // Состояния S14-S18 (следующие 4 hex)
+                if (state >= State.S14 && state <= State.S17 && IsHexChar(c))
+                    return state + 1;
+
+                if (state == State.S18 && c == '-')
+                    return State.S19;
+
+                // Состояния S19-S23 (следующие 4 hex)
+                if (state >= State.S19 && state <= State.S22 && IsHexChar(c))
+                    return state + 1;
+
+                if (state == State.S23 && c == '-')
+                    return State.S24;
+
+                // Состояния S24-S36 (последние 12 hex)
+                if (state >= State.S24 && state <= State.S35 && IsHexChar(c))
+                    return state + 1;
+
+                return State.Error;
+            }
+
+            public static List<(int start, int end, string value, int line, int column)> FindAll(string text)
+            {
+                var results = new List<(int start, int end, string value, int line, int column)>();
+                State currentState = State.S0;
+                int startIndex = -1;
+                int currentLine = 1;
+                int currentColumn = 1;
+
+                for (int i = 0; i < text.Length; i++)
+                {
+                    char c = text[i];
+
+                    // Обновляем позицию
+                    if (c == '\n')
+                    {
+                        currentLine++;
+                        currentColumn = 1;
+                    }
+                    else
+                    {
+                        currentColumn++;
+                    }
+
+                    if (currentState == State.S0 && IsHexChar(c))
+                    {
+                        startIndex = i;
+                        currentState = State.S1;
+                    }
+                    else
+                    {
+                        State next = NextState(currentState, c);
+
+                        if (next != State.Error)
+                        {
+                            currentState = next;
+                        }
+                        else
+                        {
+                            // Если достигли терминального состояния, сохраняем GUID
+                            if (currentState == State.S36 && startIndex >= 0)
+                            {
+                                string guid = text.Substring(startIndex, i - startIndex);
+
+                                int guidLine = GetLineNumber(text, startIndex);
+                                int guidColumn = GetColumnNumber(text, startIndex, guidLine);
+
+                                results.Add((startIndex, i - 1, guid, guidLine, guidColumn));
+                            }
+
+                            // Сброс и попытка начать заново с текущего символа
+                            if (IsHexChar(c))
+                            {
+                                startIndex = i;
+                                currentState = State.S1;
+                            }
+                            else
+                            {
+                                currentState = State.S0;
+                                startIndex = -1;
+                            }
+                        }
+                    }
+                }
+
+                // Проверка в конце строки
+                if (currentState == State.S36 && startIndex >= 0)
+                {
+                    string guid = text.Substring(startIndex, text.Length - startIndex);
+                    int guidLine = GetLineNumber(text, startIndex);
+                    int guidColumn = GetColumnNumber(text, startIndex, guidLine);
+                    results.Add((startIndex, text.Length - 1, guid, guidLine, guidColumn));
+                }
+
+                return results;
+            }
+
+            private static int GetLineNumber(string text, int index)
+            {
+                int line = 1;
+                for (int i = 0; i < index && i < text.Length; i++)
+                {
+                    if (text[i] == '\n')
+                        line++;
+                }
+                return line;
+            }
+
+
+            private static int GetColumnNumber(string text, int index, int lineNumber)
+            {
+                int lineStart = 0;
+                int currentLine = 1;
+
+                for (int i = 0; i < index && i < text.Length; i++)
+                {
+                    if (text[i] == '\n')
+                    {
+                        currentLine++;
+                        lineStart = i + 1;
+                    }
+                }
+
+                return index - lineStart + 1;
+            }
         }
 
 
@@ -730,7 +1007,18 @@ namespace LC1
                 isInternalChange = false;
             }
         }
+        private void SearchResultsGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (SearchResultsGrid.SelectedItem is SearchResult result)
+            {
+                int lineStart = EditorTextBox.GetCharacterIndexFromLineIndex(result.Line - 1);
+                int start = lineStart + (result.Column - 1);
 
+                EditorTextBox.Focus();
+                EditorTextBox.Select(start, result.Length);
+                EditorTextBox.ScrollToLine(result.Line - 1);
+            }
+        }
         private void Redo()
         {
             if (redoStack.Count > 0)
