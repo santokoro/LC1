@@ -8,6 +8,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using LC1.Ast;
 using LC1.Core;
 
 namespace LC1
@@ -16,6 +17,7 @@ namespace LC1
     {
         private bool isTextChanged = false;
         private string? currentFilePath = null;
+        private ProgramNode? _lastProgramAst;
 
         private Stack<string> undoStack = new Stack<string>();
         private Stack<string> redoStack = new Stack<string>();
@@ -189,6 +191,22 @@ namespace LC1
 
         private void MenuRun_Click(object sender, RoutedEventArgs e) => RunCompiler();
 
+        private void ShowAstWindow_Click(object sender, RoutedEventArgs e)
+        {
+            if (_lastProgramAst == null)
+            {
+                MessageBox.Show("Сначала выполните анализ (Пуск) без синтаксических ошибок, чтобы построить AST.",
+                    "Показать AST", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var w = new AstVisualizationWindow(_lastProgramAst)
+            {
+                Owner = this
+            };
+            w.Show();
+        }
+
         private void RunCompiler()
         {
             string source = EditorTextBox.Text;
@@ -214,6 +232,12 @@ namespace LC1
                 var parseResult = LC1.Core.Parser.Analyze(source);
                 var errors = parseResult.Errors;
 
+                SemanticPipelineResult semResult = parseResult.IsSuccess
+                    ? SemanticPipeline.BuildFromTokens(lexemes)
+                    : SemanticPipeline.SkippedDueToSyntaxErrors();
+                _lastProgramAst = semResult.Program;
+                SemanticOutputTextBox.Text = semResult.BuildFullReport();
+
                 var syntaxErrors = errors.Select(e => new
                 {
                     Fragment = string.IsNullOrEmpty(e.Fragment) ? "(пусто)" : e.Fragment,
@@ -233,7 +257,10 @@ namespace LC1
                 }
                 else
                 {
-                    StatusBarText.Text = "Синтаксических ошибок нет";
+                    int semCnt = semResult.SemanticErrors.Count;
+                    StatusBarText.Text = semCnt > 0
+                        ? $"Синтаксических ошибок нет. Семантических ошибок: {semCnt}"
+                        : "Синтаксических и семантических ошибок нет";
                 }
             }
             catch (Exception ex)
