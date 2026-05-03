@@ -1,0 +1,16 @@
+<Window x:Class="LC1.AstVisualizationWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Абстрактное синтаксическое дерево (граф)"
+        Width="1000" Height="680"
+        MinWidth="560" MinHeight="440"
+        WindowStartupLocation="CenterOwner">
+    <DockPanel Margin="8">
+        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" Margin="0,0,0,8"
+                   Text="Узлы — прямоугольники, связи родитель—потомок — линии со стрелками. Прокрутка при большом числе объявлений."/>
+        <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                      Background="#FFF5F5F5">
+            <Canvas x:Name="AstCanvas" Background="Transparent"/>
+        </ScrollViewer>
+    </DockPanel>
+</Window>

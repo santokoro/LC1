@@ -22,6 +22,7 @@ namespace LC1.Core
     public class ParseResult
     {
         public List<ParseError> Errors { get; } = new();
+        public bool IsSuccess => Errors.Count == 0;
     }
 
     public static class Parser

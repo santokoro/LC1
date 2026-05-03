@@ -112,6 +112,8 @@
                     <Image Source="Images/push2.png" Width="30" Height="30"/>
                 </Button>
 
+                <Button Content="Показать AST" Click="ShowAstWindow_Click" Margin="4,0,0,0"/>
+
                 <Separator/>
 
                 <Button Content="Проверить Flex/Bison"
@@ -210,6 +212,22 @@
                                 <DataGridTextColumn Header="Местоположение" Binding="{Binding Location}" Width="200"/>
                             </DataGrid.Columns>
                         </DataGrid>
+                    </TabItem>
+
+                    <TabItem Header="AST и семантика">
+                        <DockPanel>
+                            <TextBlock DockPanel.Dock="Top" Margin="4" TextWrapping="Wrap"
+                                       Text="Текстовое AST и семантика (после успешного синтаксического анализа)."/>
+                            <TextBox Name="SemanticOutputTextBox"
+                                     DockPanel.Dock="Bottom"
+                                     IsReadOnly="True"
+                                     AcceptsReturn="True"
+                                     VerticalScrollBarVisibility="Auto"
+                                     HorizontalScrollBarVisibility="Auto"
+                                     FontFamily="Consolas"
+                                     FontSize="12"
+                                     TextWrapping="Wrap"/>
+                        </DockPanel>
                     </TabItem>
 
                     <TabItem Header="Ошибки">
