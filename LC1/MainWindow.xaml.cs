@@ -8,46 +8,10 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
+using LC1.Core;
 
 namespace LC1
 {
-
-
-    public enum TokenKind
-    {
-        UnsignedInteger = 1,
-        Identifier = 2,
-        RealNumber = 3,
-
-        Assignment = 10,
-        Space = 11,
-        Keyword = 14,
-        StatementEnd = 16,
-        Colon = 17,
-
-        Plus = 20,
-        Minus = 21,
-        Multiply = 22,
-        Divide = 23,
-
-        Error = 99
-    }
-
-    public class Token
-    {
-        public int Code { get; set; }
-        public string Type { get; set; } = "";
-        public string Lexeme { get; set; } = "";
-        public int Line { get; set; }
-        public int Start { get; set; }
-        public int End { get; set; }
-        public bool IsError { get; set; }
-
-        public string Location => $"строка {Line}, {Start}-{End}";
-    }
-
-
-
     public partial class MainWindow : Window
     {
         private bool isTextChanged = false;
@@ -56,8 +20,6 @@ namespace LC1
         private Stack<string> undoStack = new Stack<string>();
         private Stack<string> redoStack = new Stack<string>();
         private bool isInternalChange = false;
-
-        private static readonly string[] Keywords = { "val", "const", "Double", "Float" };
 
         public MainWindow()
         {
@@ -88,8 +50,6 @@ namespace LC1
             CommandBindings.Add(new CommandBinding(NavigationCommands.Refresh, (s, e) => RunCompiler()));
             CommandBindings.Add(new CommandBinding(ApplicationCommands.Close, (s, e) => MenuExit_Click(s, e)));
         }
-
-
 
         private void NewFile()
         {
@@ -147,6 +107,7 @@ namespace LC1
                 this.Title = $"Compiler — {Path.GetFileName(currentFilePath)}";
             }
         }
+
         private void CheckFlexBison_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -171,10 +132,8 @@ namespace LC1
 
                 process.Start();
 
-
                 process.StandardInput.WriteLine(EditorTextBox.Text);
                 process.StandardInput.Close();
-
 
                 string output = process.StandardOutput.ReadToEnd();
                 process.WaitForExit();
@@ -186,8 +145,6 @@ namespace LC1
                 MessageBox.Show("Ошибка: " + ex.Message);
             }
         }
-
-
 
         private void MenuOpen_Click(object sender, RoutedEventArgs e)
         {
@@ -230,8 +187,6 @@ namespace LC1
         private void MenuSave_Click(object sender, RoutedEventArgs e) => SaveFile();
         private void MenuSaveAs_Click(object sender, RoutedEventArgs e) => SaveFileAs();
 
-
-
         private void MenuRun_Click(object sender, RoutedEventArgs e) => RunCompiler();
 
         private void RunCompiler()
@@ -240,53 +195,50 @@ namespace LC1
 
             try
             {
-                var tokens = Scan(source);
-                TokensGrid.ItemsSource = tokens;
+                var scanResult = Scanner.Analyze(source);
+                var lexemes = scanResult.Lexemes;
 
-                var lexErrors = LexicalValidator.Validate(tokens);
-
-                var parser = new Parser(tokens);
-                var ast = parser.ParseProgram();
-                var parseErrors = parser.GetErrors();
-
-                var lexAsSyntax = lexErrors.Select(le => new SyntaxError
+                var tokens = lexemes.Select(l => new
                 {
-                    Line = le.Line,
-                    Column = le.Column,
-                    Message = le.Message,
-                    Token = le.Token
+                    Code = (int)l.Code,
+                    Type = l.Type,
+                    Lexeme = l.Text,
+                    Line = l.Line,
+                    Start = l.StartColumn,
+                    End = l.EndColumn,
+                    Location = $"строка {l.Line}, {l.StartColumn}-{l.EndColumn}"
                 }).ToList();
 
-                var lexKeys = new HashSet<(int Line, int Col)>(
-                    lexAsSyntax.Select(e => (e.Line, e.Column)));
-                var parseWithoutLexDup = parseErrors
-                    .Where(pe => !lexKeys.Contains((pe.Line, pe.Column)))
-                    .ToList();
-                var allErrors = lexAsSyntax.Concat(parseWithoutLexDup).ToList();
+                TokensGrid.ItemsSource = tokens;
 
-                ErrorGrid.ItemsSource = allErrors;
+                var parseResult = LC1.Core.Parser.Analyze(source);
+                var errors = parseResult.Errors;
 
-                if (allErrors.Any())
+                var syntaxErrors = errors.Select(e => new
                 {
-                    ShowSyntaxErrors(allErrors);
+                    Fragment = string.IsNullOrEmpty(e.Fragment) ? "(пусто)" : e.Fragment,
+                    Location = $"строка {e.Line}, {e.StartColumn}-{e.EndColumn}",
+                    Message = e.Message,
+                    Line = e.Line,
+                    StartColumn = e.StartColumn,
+                    EndColumn = e.EndColumn
+                }).ToList();
 
-                    string astText = parser.PrintAst(ast);
-                    MessageBox.Show($"Дерево разбора (с ошибками):\n\n{astText}",
-                                  "Результат парсинга",
-                                  MessageBoxButton.OK,
-                                  MessageBoxImage.Warning);
+                ErrorGrid.ItemsSource = syntaxErrors;
+
+                if (errors.Any())
+                {
+                    StatusBarText.Text = $"Найдено ошибок: {errors.Count}";
+                    HighlightErrorInEditor(errors.First());
                 }
                 else
                 {
-                    string astText = parser.PrintAst(ast);
-                    MessageBox.Show($"Синтаксических ошибок нет!\n\nДерево разбора:\n{astText}",
-                                  "Успех",
-                                  MessageBoxButton.OK,
-                                  MessageBoxImage.Information);
+                    StatusBarText.Text = "Синтаксических ошибок нет";
                 }
             }
             catch (Exception ex)
             {
+                StatusBarText.Text = "Ошибка при анализе";
                 MessageBox.Show($"Ошибка при анализе: {ex.Message}",
                               "Ошибка",
                               MessageBoxButton.OK,
@@ -294,6 +246,39 @@ namespace LC1
             }
         }
 
+        private void HighlightErrorInEditor(ParseError error)
+        {
+            try
+            {
+                int lineStart = EditorTextBox.GetCharacterIndexFromLineIndex(error.Line - 1);
+                int errorStart = lineStart + (error.StartColumn - 1);
+                int errorLength = error.Fragment?.Length ?? 1;
+
+                EditorTextBox.Focus();
+                EditorTextBox.Select(errorStart, errorLength);
+                EditorTextBox.ScrollToLine(error.Line - 1);
+            }
+            catch { }
+        }
+
+        private void ErrorGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            dynamic error = ErrorGrid.SelectedItem;
+            if (error != null)
+            {
+                int line = error.Line;
+                int startCol = error.StartColumn;
+                int endCol = error.EndColumn;
+
+                int lineStart = EditorTextBox.GetCharacterIndexFromLineIndex(line - 1);
+                int start = lineStart + (startCol - 1);
+                int length = endCol - startCol + 1;
+
+                EditorTextBox.Focus();
+                EditorTextBox.Select(start, length);
+                EditorTextBox.ScrollToLine(line - 1);
+            }
+        }
 
         private void RunAntlrParser_Click(object sender, RoutedEventArgs e)
         {
@@ -311,400 +296,14 @@ namespace LC1
                 MessageBox.Show("ANTLR: ошибок нет!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
             }
 
-
             string pretty = PrettyTreePrinter.Print(tree, new KotlinConstParser(null));
             MessageBox.Show(pretty, "ANTLR AST");
-
         }
-
-
-        private void ShowSyntaxErrors(List<SyntaxError> errors)
-        {
-
-            string message = " Найдены ошибки синтаксиса:\n\n";
-            foreach (var error in errors)
-            {
-                message += $"Строка {error.Line}, позиция {error.Column}: {error.Message}\n";
-
-
-                try
-                {
-                    int lineStart = EditorTextBox.GetCharacterIndexFromLineIndex(error.Line - 1);
-                    int errorStart = lineStart + (error.Column - 1);
-                    int errorLength = error.Token?.Lexeme.Length ?? 1;
-
-                    EditorTextBox.Select(errorStart, errorLength);
-                    EditorTextBox.Focus();
-                }
-                catch { }
-            }
-
-
-            MessageBox.Show(message, "Ошибки синтаксиса",
-                           MessageBoxButton.OK,
-                           MessageBoxImage.Warning);
-        }
-
-        private Token MakeErrorToken(int line, int col, string lexeme)
-        {
-            return new Token
-            {
-                Code = (int)TokenKind.Error,
-                Type = "ошибка: недопустимый символ",
-                Lexeme = lexeme,
-                Line = line,
-                Start = col,
-                End = col,
-                IsError = true
-            };
-        }
-
-
-        private List<Token> Scan(string text)
-        {
-            var tokens = new List<Token>();
-
-            int line = 1;
-            int col = 1;
-            int i = 0;
-
-            while (i < text.Length)
-            {
-                char c = text[i];
-
-
-                if (c == '\r') { i++; continue; }
-                if (c == '\n')
-                {
-                    line++;
-                    col = 1;
-                    i++;
-                    continue;
-                }
-
-
-                if (c == ' ' || c == '\t')
-                {
-                    tokens.Add(new Token
-                    {
-                        Code = (int)TokenKind.Space,
-                        Type = "разделитель (пробел)",
-                        Lexeme = c == ' ' ? " " : "\\t",
-                        Line = line,
-                        Start = col,
-                        End = col
-                    });
-                    i++;
-                    col++;
-                    continue;
-                }
-
-
-                if (char.IsLetter(c) || c == '_')
-                {
-                    int startCol = col;
-                    int start = i;
-
-                    while (i < text.Length && (char.IsLetterOrDigit(text[i]) || text[i] == '_'))
-                    {
-                        i++;
-                        col++;
-                    }
-
-                    string lexeme = text.Substring(start, i - start);
-                    bool isKeyword = Keywords.Contains(lexeme);
-
-                    tokens.Add(new Token
-                    {
-                        Code = isKeyword ? (int)TokenKind.Keyword : (int)TokenKind.Identifier,
-                        Type = isKeyword ? "ключевое слово" : "идентификатор",
-                        Lexeme = lexeme,
-                        Line = line,
-                        Start = startCol,
-                        End = col - 1
-                    });
-
-                    continue;
-                }
-
-
-                if (char.IsDigit(c) || c == '.')
-                {
-                    int startCol = col;
-                    int start = i;
-
-                    bool hasDot = false;
-                    bool hasDigitsBeforeDot = false;
-                    bool hasDigitsAfterDot = false;
-
-
-                    if (char.IsDigit(c))
-                    {
-                        hasDigitsBeforeDot = true;
-                        while (i < text.Length && char.IsDigit(text[i]))
-                        {
-                            i++;
-                            col++;
-                        }
-                    }
-
-
-                    if (i < text.Length && text[i] == '.')
-                    {
-                        hasDot = true;
-                        i++;
-                        col++;
-
-                        if (i < text.Length && char.IsDigit(text[i]))
-                        {
-                            hasDigitsAfterDot = true;
-                            while (i < text.Length && char.IsDigit(text[i]))
-                            {
-                                i++;
-                                col++;
-                            }
-                        }
-                        else
-                        {
-                            tokens.Add(new Token
-                            {
-                                Code = (int)TokenKind.Error,
-                                Type = "ошибка: ожидается цифра после точки",
-                                Lexeme = text.Substring(start, i - start),
-                                Line = line,
-                                Start = startCol,
-                                End = col - 1,
-                                IsError = true
-                            });
-                            continue;
-                        }
-                    }
-
-                    string numberLexeme = text.Substring(start, i - start);
-
-                    if (hasDot)
-                    {
-                        tokens.Add(new Token
-                        {
-                            Code = (int)TokenKind.RealNumber,
-                            Type = "вещественное число",
-                            Lexeme = numberLexeme,
-                            Line = line,
-                            Start = startCol,
-                            End = col - 1
-                        });
-                    }
-                    else
-                    {
-                        tokens.Add(new Token
-                        {
-                            Code = (int)TokenKind.UnsignedInteger,
-                            Type = "целое без знака",
-                            Lexeme = numberLexeme,
-                            Line = line,
-                            Start = startCol,
-                            End = col - 1
-                        });
-                    }
-
-                    continue;
-                }
-
-
-                if (c == '+')
-                {
-                    tokens.Add(new Token
-                    {
-                        Code = (int)TokenKind.Plus,
-                        Type = "оператор сложения",
-                        Lexeme = "+",
-                        Line = line,
-                        Start = col,
-                        End = col
-                    });
-                    i++; col++;
-                    continue;
-                }
-
-
-                if (c == '-')
-                {
-                    tokens.Add(new Token
-                    {
-                        Code = (int)TokenKind.Minus,
-                        Type = "оператор вычитания",
-                        Lexeme = "-",
-                        Line = line,
-                        Start = col,
-                        End = col
-                    });
-                    i++; col++;
-                    continue;
-                }
-
-
-                if (c == '*')
-                {
-                    tokens.Add(new Token
-                    {
-                        Code = (int)TokenKind.Multiply,
-                        Type = "оператор умножения",
-                        Lexeme = "*",
-                        Line = line,
-                        Start = col,
-                        End = col
-                    });
-                    i++; col++;
-                    continue;
-                }
-
-
-                if (c == '/')
-                {
-                    tokens.Add(new Token
-                    {
-                        Code = (int)TokenKind.Divide,
-                        Type = "оператор деления",
-                        Lexeme = "/",
-                        Line = line,
-                        Start = col,
-                        End = col
-                    });
-                    i++; col++;
-                    continue;
-                }
-
-
-                if (c == '=')
-                {
-                    tokens.Add(new Token
-                    {
-                        Code = (int)TokenKind.Assignment,
-                        Type = "оператор присваивания",
-                        Lexeme = "=",
-                        Line = line,
-                        Start = col,
-                        End = col
-                    });
-                    i++; col++;
-                    continue;
-                }
-
-
-                if (c == ';')
-                {
-                    tokens.Add(new Token
-                    {
-                        Code = (int)TokenKind.StatementEnd,
-                        Type = "конец оператора",
-                        Lexeme = ";",
-                        Line = line,
-                        Start = col,
-                        End = col
-                    });
-                    i++; col++;
-                    continue;
-                }
-
-
-                if (c == ':')
-                {
-                    tokens.Add(new Token
-                    {
-                        Code = (int)TokenKind.Colon,
-                        Type = "двоеточие",
-                        Lexeme = ":",
-                        Line = line,
-                        Start = col,
-                        End = col
-                    });
-                    i++; col++;
-                    continue;
-                }
-
-
-                tokens.Add(MakeErrorToken(line, col, c.ToString()));
-                i++;
-                col++;
-            }
-
-            return tokens;
-        }
-
-        public class SearchResult
-        {
-            public string Value { get; set; }
-            public int Line { get; set; }
-            public int Column { get; set; }
-            public int Length { get; set; }
-        }
-
-        private readonly Dictionary<string, string> SearchPatterns = new()
-{
-    { "Идентификатор", @"[A-Za-z$_][A-Za-z]*" },
-    { "Пароль", @"[A-Za-zА-Яа-я0-9!@#$%^&*()_+={}
-
-\[\]
-
-:;""'<>,.?/\\|~`-]{10,}" },
-    { "GUID", @"[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}" }
-};
-
-        private void SearchButton_Click(object sender, RoutedEventArgs e)
-        {
-            if (SearchTypeBox.SelectedItem is not ComboBoxItem item)
-                return;
-
-            string type = item.Content.ToString();
-            string pattern = SearchPatterns[type];
-
-            string text = EditorTextBox.Text;
-            var results = new List<SearchResult>();
-
-            var lines = text.Split('\n');
-
-            for (int lineIndex = 0; lineIndex < lines.Length; lineIndex++)
-            {
-                string line = lines[lineIndex];
-                var matches = System.Text.RegularExpressions.Regex.Matches(line, pattern);
-
-                foreach (System.Text.RegularExpressions.Match m in matches)
-                {
-                    results.Add(new SearchResult
-                    {
-                        Value = m.Value,
-                        Line = lineIndex + 1,
-                        Column = m.Index + 1,
-                        Length = m.Length
-                    });
-                }
-            }
-
-            SearchResultsGrid.ItemsSource = results;
-            SearchCountText.Text = $"Найдено совпадений: {results.Count}";
-        }
-
-        private void SearchResultsGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-        {
-            if (SearchResultsGrid.SelectedItem is not SearchResult r)
-                return;
-
-            int lineStart = EditorTextBox.GetCharacterIndexFromLineIndex(r.Line - 1);
-            int start = lineStart + (r.Column - 1);
-
-            EditorTextBox.Focus();
-            EditorTextBox.Select(start, r.Length);
-            EditorTextBox.ScrollToLine(r.Line - 1);
-        }
-
-
-
-
-
 
         private void TokensGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
-            if (TokensGrid.SelectedItem is Token token)
+            dynamic token = TokensGrid.SelectedItem;
+            if (token != null)
             {
                 int line = token.Line;
                 int col = token.Start;
@@ -717,8 +316,6 @@ namespace LC1
                 EditorTextBox.ScrollToLine(line - 1);
             }
         }
-
-
 
         private void Undo()
         {
@@ -743,23 +340,15 @@ namespace LC1
             }
         }
 
-
-
         private void Undo_Click(object sender, RoutedEventArgs e) => Undo();
         private void Redo_Click(object sender, RoutedEventArgs e) => Redo();
-
-
 
         private void Copy_Click(object sender, RoutedEventArgs e) => EditorTextBox.Copy();
         private void Cut_Click(object sender, RoutedEventArgs e) => EditorTextBox.Cut();
         private void Paste_Click(object sender, RoutedEventArgs e) => EditorTextBox.Paste();
 
-
-
         private void MenuAbout_Click(object sender, RoutedEventArgs e) => new AboutWindow().ShowDialog();
         private void MenuHelp_Click(object sender, RoutedEventArgs e) => new HelpWindow().ShowDialog();
-
-
 
         private void ApplyFontSize(double size)
         {
@@ -794,8 +383,6 @@ namespace LC1
             if (double.TryParse(FontSizeBox.Text, out double size))
                 ApplyFontSize(size);
         }
-
-
 
         private void MenuExit_Click(object sender, RoutedEventArgs e)
         {
@@ -838,8 +425,6 @@ namespace LC1
             }
         }
 
-
-
         private void UpdateLineNumbers()
         {
             int lineCount = EditorTextBox.LineCount;
@@ -851,8 +436,6 @@ namespace LC1
             LineNumbers.Text = sb.ToString();
         }
 
-
-
         private void EditorTextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
             UpdateLineNumbers();
@@ -863,8 +446,6 @@ namespace LC1
         {
             LineNumbersScroll.ScrollToVerticalOffset(e.VerticalOffset);
         }
-
-
 
         private void Window_DragEnter(object sender, DragEventArgs e)
         {
@@ -890,8 +471,6 @@ namespace LC1
 
             this.Title = $"Compiler — {Path.GetFileName(path)}";
         }
-
-
 
         private void UpdateStatusBar()
         {

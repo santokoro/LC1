@@ -76,7 +76,7 @@
                     <Image Source="Images/open.png" Width="30" Height="30"/>
                 </Button>
 
-                <Button ToolTip="Сохранить" Click ="MenuSave_Click">
+                <Button ToolTip="Сохранить" Click="MenuSave_Click">
                     <Image Source="Images/save.png" Width="30" Height="30"/>
                 </Button>
 
@@ -194,11 +194,9 @@
             <Grid Grid.Row="2">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="420"/>
                 </Grid.ColumnDefinitions>
 
                 <TabControl Grid.Column="0">
-
                     <TabItem Header="Лексемы">
                         <DataGrid Name="TokensGrid"
                                   AutoGenerateColumns="False"
@@ -217,74 +215,16 @@
                     <TabItem Header="Ошибки">
                         <DataGrid Name="ErrorGrid"
                                   AutoGenerateColumns="False"
-                                  IsReadOnly="True">
+                                  IsReadOnly="True"
+                                  MouseDoubleClick="ErrorGrid_MouseDoubleClick">
                             <DataGrid.Columns>
-                                <DataGridTextColumn Header="Строка" Binding="{Binding Line}" Width="60"/>
-                                <DataGridTextColumn Header="Позиция" Binding="{Binding Column}" Width="70"/>
-                                <DataGridTextColumn Header="Сообщение" Binding="{Binding Message}" Width="*"/>
-                                <DataGridTextColumn Header="Токен" Binding="{Binding Token.Lexeme}" Width="120"/>
+                                <DataGridTextColumn Header="Неверный фрагмент" Binding="{Binding Fragment}" Width="*"/>
+                                <DataGridTextColumn Header="Местоположение" Binding="{Binding Location}" Width="120"/>
+                                <DataGridTextColumn Header="Описание" Binding="{Binding Message}" Width="*"/>
                             </DataGrid.Columns>
                         </DataGrid>
                     </TabItem>
-
                 </TabControl>
-
-                <Border Grid.Column="1" Background="#f3f3f3" BorderBrush="Gray" BorderThickness="1" Padding="10">
-                    <Grid>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-
-                        <TextBlock Grid.Row="0"
-                   Text="Поиск по регулярному выражению"
-                   FontWeight="Bold"
-                   FontSize="16"
-                   Margin="0 0 0 10"/>
-
-                        <TextBlock Grid.Row="1" Text="Тип поиска:"/>
-
-                        <ComboBox Grid.Row="2"
-                  Name="SearchTypeBox"
-                  Margin="0 5 0 10">
-                            <ComboBoxItem Content="Идентификатор"/>
-                            <ComboBoxItem Content="Пароль"/>
-                            <ComboBoxItem Content="GUID"/>
-                        </ComboBox>
-
-                        <Button Grid.Row="3"
-                Content="Искать"
-                Height="30"
-                Click="SearchButton_Click"
-                Margin="0 0 0 10"/>
-
-                        <TextBlock Grid.Row="4"
-                   Name="SearchCountText"
-                   FontWeight="Bold"
-                   Margin="0 0 0 10"/>
-
-                        <DataGrid Grid.Row="5"
-                  Name="SearchResultsGrid"
-                  AutoGenerateColumns="False"
-                  IsReadOnly="True"
-                  SelectionMode="Single"
-                  MouseDoubleClick="SearchResultsGrid_MouseDoubleClick"
-                  ScrollViewer.VerticalScrollBarVisibility="Auto"
-                  ScrollViewer.CanContentScroll="True">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Подстрока" Binding="{Binding Value}" Width="*"/>
-                                <DataGridTextColumn Header="Строка" Binding="{Binding Line}" Width="60"/>
-                                <DataGridTextColumn Header="Позиция" Binding="{Binding Column}" Width="70"/>
-                                <DataGridTextColumn Header="Длина" Binding="{Binding Length}" Width="60"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
-
-                    </Grid>
-                </Border>
-
 
             </Grid>
 
