@@ -15,6 +15,31 @@ namespace LC1.Core
         static bool IsKeywordBoundary(string source, int afterKeywordIndex) =>
             afterKeywordIndex >= source.Length || !IsIdentContinue(source[afterKeywordIndex]);
 
+        static bool IsAllowedAfterIdentifierRun(string source, int index) =>
+            index >= source.Length
+            || char.IsWhiteSpace(source[index])
+            || source[index] == ':'
+            || source[index] == '='
+            || source[index] == ';'
+            || source[index] == '-';
+
+        static void ConsumeRestOfBrokenNumericLiteral(string source, ref int i, ref int col)
+        {
+            while (i < source.Length)
+            {
+                char c = source[i];
+                if (char.IsWhiteSpace(c))
+                    break;
+                if (c == ';')
+                {
+                    bool semicolonInsideNumber = i + 1 < source.Length && char.IsDigit(source[i + 1]);
+                    if (!semicolonInsideNumber)
+                        break;
+                }
+                i++; col++;
+            }
+        }
+
         public static ScanResult Analyze(string source)
         {
             var result = new ScanResult();
@@ -85,16 +110,18 @@ namespace LC1.Core
                 {
                     int startCol = col, startIndex = i;
                     bool hasDot = false;
-                    bool hasDigit = false;
+                    bool hasDigitBeforeDot = false;
+                    bool hasDigitAfterDot = false;
                     bool tooManyDots = false;
 
+                    
                     if (ch == '.')
                     {
                         i++; col++;
                         hasDot = true;
                         while (i < source.Length && char.IsDigit(source[i]))
                         {
-                            hasDigit = true;
+                            hasDigitAfterDot = true;
                             i++; col++;
                         }
                         if (i < source.Length && source[i] == '.')
@@ -105,25 +132,26 @@ namespace LC1.Core
                                 i++; col++;
                             }
                         }
-                        if (!hasDigit) tooManyDots = true;
+                        if (!hasDigitAfterDot) tooManyDots = true;
                     }
                     else if (char.IsDigit(ch))
                     {
-                        hasDigit = true;
+                        hasDigitBeforeDot = true;
                         i++; col++;
-                        while (i < source.Length)
+                        while (i < source.Length && char.IsDigit(source[i]))
                         {
-                            char next = source[i];
-                            if (char.IsDigit(next))
+                            i++; col++;
+                        }
+                        if (i < source.Length && source[i] == '.' && !hasDot)
+                        {
+                            hasDot = true;
+                            i++; col++;
+                            while (i < source.Length && char.IsDigit(source[i]))
                             {
+                                hasDigitAfterDot = true;
                                 i++; col++;
                             }
-                            else if (next == '.' && !hasDot)
-                            {
-                                hasDot = true;
-                                i++; col++;
-                            }
-                            else if (next == '.' && hasDot)
+                            if (i < source.Length && source[i] == '.')
                             {
                                 tooManyDots = true;
                                 i++; col++;
@@ -131,17 +159,18 @@ namespace LC1.Core
                                 {
                                     i++; col++;
                                 }
-                                break;
                             }
-                            else break;
                         }
                     }
 
-                    string number = source.Substring(startIndex, i - startIndex);
-                    bool isValidDouble = hasDot && hasDigit && !tooManyDots;
+                    bool isValidDouble = !tooManyDots && hasDot && hasDigitBeforeDot && hasDigitAfterDot;
 
-                    if (isValidDouble)
+                    bool boundaryOk = i >= source.Length || char.IsWhiteSpace(source[i])
+                        || source[i] == ';' || source[i] == ':' || source[i] == '=' || source[i] == '-';
+
+                    if (isValidDouble && boundaryOk)
                     {
+                        string number = source.Substring(startIndex, i - startIndex);
                         result.Lexemes.Add(new Lexeme
                         {
                             Code = LexemeCode.DoubleLiteral,
@@ -154,6 +183,8 @@ namespace LC1.Core
                     }
                     else
                     {
+                        ConsumeRestOfBrokenNumericLiteral(source, ref i, ref col);
+                        string number = source.Substring(startIndex, i - startIndex);
                         result.Lexemes.Add(new Lexeme
                         {
                             Code = LexemeCode.Error,
@@ -174,6 +205,41 @@ namespace LC1.Core
                     {
                         i++; col++;
                     }
+
+                    bool brokenBySemicolonInWord = false;
+                    if (i < source.Length && source[i] == ';')
+                    {
+                        int probe = i;
+                        while (probe < source.Length && source[probe] == ';')
+                            probe++;
+                        brokenBySemicolonInWord =
+                            probe < source.Length
+                            && IsIdentContinue(source[probe]);
+                    }
+
+                    if (!IsAllowedAfterIdentifierRun(source, i) || brokenBySemicolonInWord)
+                    {
+                        while (i < source.Length && !char.IsWhiteSpace(source[i])
+                               && source[i] != ':' && source[i] != '=' && source[i] != '-')
+                        {
+                            if (!brokenBySemicolonInWord && source[i] == ';')
+                                break;
+                            i++; col++;
+                        }
+
+                        string badWord = source.Substring(startIndex, i - startIndex);
+                        result.Lexemes.Add(new Lexeme
+                        {
+                            Code = LexemeCode.Error,
+                            Type = "ошибка",
+                            Text = badWord,
+                            Line = line,
+                            StartColumn = startCol,
+                            EndColumn = col - 1
+                        });
+                        continue;
+                    }
+
                     string identifier = source.Substring(startIndex, i - startIndex);
 
                     if (identifier == "const" || identifier == "val" || identifier == "Double")

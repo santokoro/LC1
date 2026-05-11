@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using LC1.Core;
+using compiles_lab_1.Core;
 
 namespace LC1
 {
@@ -214,7 +215,11 @@ namespace LC1
                 var parseResult = LC1.Core.Parser.Analyze(source);
                 var errors = parseResult.Errors;
 
-                var syntaxErrors = errors.Select(e => new
+                int lexicalErrors = lexemes.Count(l => l.Code == LexemeCode.Error);
+                int syntaxErrors = errors.Count;
+                int totalErrors = lexicalErrors + syntaxErrors;
+
+                var errorRows = errors.Select(e => new
                 {
                     Fragment = string.IsNullOrEmpty(e.Fragment) ? "(пусто)" : e.Fragment,
                     Location = $"строка {e.Line}, {e.StartColumn}-{e.EndColumn}",
@@ -224,21 +229,36 @@ namespace LC1
                     EndColumn = e.EndColumn
                 }).ToList();
 
-                ErrorGrid.ItemsSource = syntaxErrors;
+                if (totalErrors == 0)
+                {
+                    ErrorsOkText.Visibility = Visibility.Visible;
+                    ErrorGrid.Visibility = Visibility.Collapsed;
+                    ErrorGrid.ItemsSource = null;
+                }
+                else
+                {
+                    ErrorsOkText.Visibility = Visibility.Collapsed;
+                    ErrorGrid.Visibility = Visibility.Visible;
+                    ErrorGrid.ItemsSource = errorRows;
+                }
 
                 if (errors.Any())
                 {
-                    StatusBarText.Text = $"Найдено ошибок: {errors.Count}";
+                    StatusBarText.Text = $"Найдено ошибок: {totalErrors}";
                     HighlightErrorInEditor(errors.First());
                 }
                 else
                 {
-                    StatusBarText.Text = "Синтаксических ошибок нет";
+                    StatusBarText.Text = lexicalErrors > 0
+                        ? $"Найдено ошибок: {totalErrors}"
+                        : "Синтаксических ошибок нет";
                 }
             }
             catch (Exception ex)
             {
                 StatusBarText.Text = "Ошибка при анализе";
+                ErrorsOkText.Visibility = Visibility.Collapsed;
+                ErrorGrid.Visibility = Visibility.Visible;
                 MessageBox.Show($"Ошибка при анализе: {ex.Message}",
                               "Ошибка",
                               MessageBoxButton.OK,

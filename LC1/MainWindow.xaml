@@ -213,16 +213,25 @@
                     </TabItem>
 
                     <TabItem Header="Ошибки">
-                        <DataGrid Name="ErrorGrid"
-                                  AutoGenerateColumns="False"
-                                  IsReadOnly="True"
-                                  MouseDoubleClick="ErrorGrid_MouseDoubleClick">
-                            <DataGrid.Columns>
-                                <DataGridTextColumn Header="Неверный фрагмент" Binding="{Binding Fragment}" Width="*"/>
-                                <DataGridTextColumn Header="Местоположение" Binding="{Binding Location}" Width="120"/>
-                                <DataGridTextColumn Header="Описание" Binding="{Binding Message}" Width="*"/>
-                            </DataGrid.Columns>
-                        </DataGrid>
+                        <Grid>
+                            <TextBlock x:Name="ErrorsOkText"
+                                       Text="Анализ завершён успешно! Ошибок не обнаружено!"
+                                       Margin="12"
+                                       FontSize="14"
+                                       TextWrapping="Wrap"
+                                       VerticalAlignment="Top"
+                                       Visibility="Collapsed"/>
+                            <DataGrid Name="ErrorGrid"
+                                      AutoGenerateColumns="False"
+                                      IsReadOnly="True"
+                                      MouseDoubleClick="ErrorGrid_MouseDoubleClick">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Неверный фрагмент" Binding="{Binding Fragment}" Width="*"/>
+                                    <DataGridTextColumn Header="Местоположение" Binding="{Binding Location}" Width="120"/>
+                                    <DataGridTextColumn Header="Описание" Binding="{Binding Message}" Width="*"/>
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </Grid>
                     </TabItem>
                 </TabControl>
 
