@@ -86,7 +86,7 @@ dotnet run --project LC1/LC1.csproj
 
 <img width="339" height="155" alt="image" src="https://github.com/user-attachments/assets/7372234c-6001-4cf8-bba7-4da54fe83168" />
 
-1. Получение IR -O0:
+**1. Получение IR -O0:**
 ```
 santoro@santoro-VirtualBox:~/llvm-lab$ cd ~/llvm-lab
 clang -S -emit-llvm -O0 -fno-discard-value-names area_pi.c -o out/area_pi-O0.ll
