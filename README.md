@@ -81,9 +81,11 @@ dotnet run --project LC1/LC1.csproj
 Основное задание:
 Установка Clang и LLVM:
 
-Индивидуальное задание:
+# Индивидуальное задание:
 Программа варианта
+
 <img width="339" height="155" alt="image" src="https://github.com/user-attachments/assets/7372234c-6001-4cf8-bba7-4da54fe83168" />
+
 1. Получение IR -O0:
 ```
 santoro@santoro-VirtualBox:~/llvm-lab$ cd ~/llvm-lab
@@ -127,10 +129,92 @@ attributes #0 = { noinline nounwind optnone uwtable "frame-pointer"="all" "min-l
 !5 = !{!"Ubuntu clang version 18.1.3 (1ubuntu1)"}
 ```
 2. Получите IR для -O2. Произошло ли свертывание константы?
+```
+santoro@santoro-VirtualBox:~/llvm-lab$ cd ~/llvm-lab
+clang -S -emit-llvm -O2 -fno-discard-value-names area_pi.c -o out/area_pi-O2.ll
+santoro@santoro-VirtualBox:~/llvm-lab$ cat out/area_pi-O2.ll
+; ModuleID = 'area_pi.c'
+source_filename = "area_pi.c"
+target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"
+target triple = "x86_64-pc-linux-gnu"
 
-3. Примените -constprop, -globalopt, -ipsccp.
+@PI = dso_local local_unnamed_addr constant double 0x400921FB54442D18, align 8
 
-4. Сравните CFG.
+; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none) uwtable
+define dso_local noundef i32 @main() local_unnamed_addr #0 {
+entry:
+  ret i32 12
+}
 
-5. Сделайте вывод о том, когда вещественная константа
-вычисляется на этапе компиляции?
+attributes #0 = { mustprogress nofree norecurse nosync nounwind willreturn memory(none) uwtable "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+
+!llvm.module.flags = !{!0, !1, !2, !3}
+!llvm.ident = !{!4}
+
+!0 = !{i32 1, !"wchar_size", i32 4}
+!1 = !{i32 8, !"PIC Level", i32 2}
+!2 = !{i32 7, !"PIE Level", i32 2}
+!3 = !{i32 7, !"uwtable", i32 2}
+!4 = !{!"Ubuntu clang version 18.1.3 (1ubuntu1)"}
+```
+**2.1 Произошло ли свертывание константы?**
+При генерации IR с флагом -O2 LLVM выполнил свёртывание констант и распространение констант: выражение с вещественной константой PI и r = 2.0 вычислено на этапе компиляции, в теле main осталась только инструкция ret i32 12.
+
+**3. Примените -constprop, -globalopt, -ipsccp.**
+***3.1 -constprop***
+```
+opt -passes=sccp out/area_pi-O0.bc -S -o out/area_pi-constprop.ll
+diff -u out/area_pi-O0.ll out/area_pi-constprop.ll
+```
+
+Применение opt -passes=sccp к полученному при -O0, не изменило алгоритм функции main: сохранились операции alloca, store, load, fmul с константой π и fptosi. В diff видны лишь переименование временных переменных и отсутствие метки entry, что связано с повторной генерацией текстового IR из bitcode, а не со свёртыванием вещественной константы. Вычисление PI * 2.0 * 2.0 на этапе компиляции при одном проходе sccp не выполняется.
+
+***3.2 -globalopt***
+```
+opt -passes=globalopt out/area_pi-O0.bc -S -o out/area_pi-globalopt.ll
+diff -u out/area_pi-O0.ll out/area_pi-globalopt.ll
+```
+
+Проход globalopt изменил объявление @PI, но логику main не упростил: умножения и работа с памятью остались. Константное выражение при одном globalopt не вычисляется.
+
+***3.3 -ipsccp***
+```
+opt -passes=ipsccp out/area_pi-O0.bc -S -o out/area_pi-ipsccp.ll
+diff -u out/area_pi-O0.ll out/area_pi-ipsccp.ll
+```
+opt -passes=ipsccp не упростил IR: в main остались те же операции с памятью и fmul; из‑за одной функции и хранения значений в alloca межпроцедурная пропагация констант почти не сработала.
+
+**4. Сравните CFG.**
+Команды для получения PNG:
+```
+cd ~/llvm-lab
+
+# O0
+opt -passes=dot-cfg out/area_pi-O0.bc -o out/tmp-O0.bc
+cp .main.dot out/cfg-O0.dot
+dot -Tpng .main.dot -o out/cfg-O0.png
+rm -f .main.dot out/tmp-O0.bc
+```
+<img width="497" height="301" alt="image" src="https://github.com/user-attachments/assets/1baa4be6-b032-49c8-9ebc-9bc2b027d42a" />
+
+```
+# O2
+opt -passes=dot-cfg out/area_pi-O2.bc -o out/tmp-O2.bc
+cp .main.dot out/cfg-O2.dot
+dot -Tpng .main.dot -o out/cfg-O2.png
+rm -f .main.dot out/tmp-O2.bc
+```
+<img width="165" height="76" alt="image" src="https://github.com/user-attachments/assets/25845023-a755-4ce4-89be-512873aafcbd" />
+
+**Вывод** 
+При -O0 CFG функции main — один базовый блок со всеми операциями в памяти и с плавающей точкой.
+При -O2 — тоже один блок, но он сводится к ret i32 12.
+Число блоков и переходов не меняется; упрощается содержимое блока за счёт свёртывания констант.
+
+# Вывод
+Вещественная константа PI и выражение PI * r * r не вычисляются на этапе компиляции при генерации IR с -O0: в промежуточном коде остаются загрузки константы и операции fmul с плавающей точкой, что подтверждается CFG с полным набором инструкций в одном базовом блоке.
+
+На этапе компиляции выражение вычисляется при использовании clang -O2: в IR функции main остаётся только ret i32 12, а CFG сводится к одному блоку с этой инструкцией. Это означает, что LLVM заранее посчитал площадь и привёл результат к целому.
+
+Отдельные проходы sccp (constprop), globalopt и ipsccp для IR уровня -O0 не дают такого эффекта: константное выражение с вещественной PI сворачивается только в составе комплексной оптимизации -O2, когда работают совместно преобразование памяти, распространение и свёртывание констант.
+
