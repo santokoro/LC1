@@ -158,6 +158,7 @@ attributes #0 = { mustprogress nofree norecurse nosync nounwind willreturn memor
 !4 = !{!"Ubuntu clang version 18.1.3 (1ubuntu1)"}
 ```
 **2.1 Произошло ли свертывание константы?**
+
 При генерации IR с флагом -O2 LLVM выполнил свёртывание констант и распространение констант: выражение с вещественной константой PI и r = 2.0 вычислено на этапе компиляции, в теле main осталась только инструкция ret i32 12.
 
 **3. Примените -constprop, -globalopt, -ipsccp.**
