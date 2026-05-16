@@ -128,7 +128,7 @@ attributes #0 = { noinline nounwind optnone uwtable "frame-pointer"="all" "min-l
 !4 = !{i32 7, !"frame-pointer", i32 2}
 !5 = !{!"Ubuntu clang version 18.1.3 (1ubuntu1)"}
 ```
-** 2. Получите IR для -O2. Произошло ли свертывание константы? **
+**2. Получите IR для -O2. Произошло ли свертывание константы?**
 ```
 santoro@santoro-VirtualBox:~/llvm-lab$ cd ~/llvm-lab
 clang -S -emit-llvm -O2 -fno-discard-value-names area_pi.c -o out/area_pi-O2.ll
