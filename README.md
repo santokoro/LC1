@@ -78,8 +78,129 @@ dotnet run --project LC1/LC1.csproj
 5. Сделайте вывод о том, когда вещественная константа
 вычисляется на этапе компиляции?
 
-Основное задание:
-Установка Clang и LLVM:
+# Основное задание:
+
+**1.2 Установка Clang и LLVM:**
+Команды:
+```
+sudo apt update
+sudo apt install -y clang graphviz llvm-18-tools
+```
+
+**Программа основного задания**
+
+<img width="281" height="331" alt="image" src="https://github.com/user-attachments/assets/3630b148-00af-40b4-a202-2cbf1adae2af" />
+
+**1.3 Получение AST**
+Команда:
+```
+clang -Xclang -ast-dump -fsyntax-only main.c
+```
+
+**Вывод:**
+<img width="1207" height="685" alt="image" src="https://github.com/user-attachments/assets/b1307f04-9b10-47f7-8946-035b41a416f1" />
+
+**1.4 Генерация LLVM IR**
+Команда: 
+```
+clang -S -emit-llvm main.c -o main.ll
+```
+
+**1.5 Оптимизация IR**
+Команды: 
+```
+clang -O0 -S -emit-llvm main.c -o main_O0.ll
+clang -O2 -S -emit-llvm main.c -o main_O2.ll
+Для сравнения двух файлов:
+diff main_O0.ll main_O2.ll
+```
+
+**Результат**
+```
+santoro@santoro-VirtualBox:~/llvm-lab$ clang -S -emit-llvm main.c -o main.ll
+santoro@santoro-VirtualBox:~/llvm-lab$ clang -O0 -S -emit-llvm main.c -o main_O0.ll
+santoro@santoro-VirtualBox:~/llvm-lab$ clang -O2 -S -emit-llvm main.c -o main_O2.ll
+santoro@santoro-VirtualBox:~/llvm-lab$ diff main_O0.ll main_O2.ll
+8,15c8,11
+< ; Function Attrs: noinline nounwind optnone uwtable
+< define dso_local i32 @square(i32 noundef %0) #0 {
+<   %2 = alloca i32, align 4
+<   store i32 %0, ptr %2, align 4
+<   %3 = load i32, ptr %2, align 4
+<   %4 = load i32, ptr %2, align 4
+<   %5 = mul nsw i32 %3, %4
+<   ret i32 %5
+---
+> ; Function Attrs: mustprogress nofree norecurse nosync nounwind willreturn memory(none) uwtable
+> define dso_local i32 @square(i32 noundef %0) local_unnamed_addr #0 {
+>   %2 = mul nsw i32 %0, %0
+>   ret i32 %2
+18,29c14,16
+< ; Function Attrs: noinline nounwind optnone uwtable
+< define dso_local i32 @main() #0 {
+<   %1 = alloca i32, align 4
+<   %2 = alloca i32, align 4
+<   %3 = alloca i32, align 4
+<   store i32 0, ptr %1, align 4
+<   store i32 5, ptr %2, align 4
+<   %4 = load i32, ptr %2, align 4
+<   %5 = call i32 @square(i32 noundef %4)
+<   store i32 %5, ptr %3, align 4
+<   %6 = load i32, ptr %3, align 4
+<   %7 = call i32 (ptr, ...) ptr noundef @.str, i32 noundef %6
+---
+> ; Function Attrs: nofree nounwind uwtable
+> define dso_local noundef i32 @main() local_unnamed_addr #1 {
+>   %1 = tail call i32 (ptr, ...) ptr noundef nonnull dereferenceable(1 @.str, i32 noundef 25)
+33c20,21
+< declare i32 ptr noundef, ... #1
+---
+> ; Function Attrs: nofree nounwind
+> declare noundef i32 ptr nocapture noundef readonly, ... local_unnamed_addr #2
+35,36c23,25
+< attributes #0 = { noinline nounwind optnone uwtable "frame-pointer"="all" "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+< attributes #1 = { "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+---
+> attributes #0 = { mustprogress nofree norecurse nosync nounwind willreturn memory(none) uwtable "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+> attributes #1 = { nofree nounwind uwtable "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+> attributes #2 = { nofree nounwind "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+38,39c27,28
+< !llvm.module.flags = !{!0, !1, !2, !3, !4}
+< !llvm.ident = !{!5}
+---
+> !llvm.module.flags = !{!0, !1, !2, !3}
+> !llvm.ident = !{!4}
+45,46c34
+< !4 = !{i32 7, !"frame-pointer", i32 2}
+< !5 = !{!"Ubuntu clang version 18.1.3 (1ubuntu1)"}
+---
+> !4 = !{!"Ubuntu clang version 18.1.3 (1ubuntu1)"}
+```
+
+**1.6 Граф потока управления программы**
+Команды которые мы используем:
+```
+clang -O2 -S -emit-llvm main.c -o out/main_O2.ll
+clang -c -emit-llvm -O2 main.c -o out/main_O2.bc
+
+cd ~/llvm-lab
+rm -f .main.dot .square.dot
+
+opt -passes=dot-cfg out/main_O2.bc -o out/tmp.bc
+
+ls -la .*.dot
+
+dot -Tpng .main.dot -o out/cfg_main.png
+# если есть .square.dot:
+dot -Tpng .square.dot -o out/cfg_square.png 2>/dev/null || true
+
+rm -f .main.dot .square.dot out/tmp.bc
+xdg-open out/cfg_main.png
+```
+
+# Вывод:
+<img width="662" height="145" alt="image" src="https://github.com/user-attachments/assets/76bd3485-fd45-4f3d-b379-dc5a14a36650" />
+
 
 # Индивидуальное задание:
 Программа варианта
