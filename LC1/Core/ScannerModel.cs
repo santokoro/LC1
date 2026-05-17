@@ -3,6 +3,7 @@
     public enum LexemeCode
     {
         DoubleLiteral = 1,
+        IntegerLiteral = 12,
         KeywordDouble = 2,
         KeywordConst = 3,
         KeywordVal = 4,
@@ -11,6 +12,11 @@
         Assign = 7,
         Semicolon = 8,
         Minus = 9,
+        Plus = 13,
+        Star = 14,
+        Div = 15,
+        LParen = 16,
+        RParen = 17,
         Error = 11
     }
 

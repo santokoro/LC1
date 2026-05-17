@@ -139,6 +139,7 @@ namespace LC1.Core
 
                     string number = source.Substring(startIndex, i - startIndex);
                     bool isValidDouble = hasDot && hasDigit && !tooManyDots;
+                    bool isValidInt = hasDigit && !hasDot && !tooManyDots;
 
                     if (isValidDouble)
                     {
@@ -146,6 +147,18 @@ namespace LC1.Core
                         {
                             Code = LexemeCode.DoubleLiteral,
                             Type = "вещественное число",
+                            Text = number,
+                            Line = line,
+                            StartColumn = startCol,
+                            EndColumn = col - 1
+                        });
+                    }
+                    else if (isValidInt)
+                    {
+                        result.Lexemes.Add(new Lexeme
+                        {
+                            Code = LexemeCode.IntegerLiteral,
+                            Type = "целое число",
                             Text = number,
                             Line = line,
                             StartColumn = startCol,
@@ -203,6 +216,39 @@ namespace LC1.Core
                     continue;
                 }
 
+                if (ch == '+' || ch == '*' || ch == '/' || ch == '(' || ch == ')')
+                {
+                    LexemeCode code = ch switch
+                    {
+                        '+' => LexemeCode.Plus,
+                        '*' => LexemeCode.Star,
+                        '/' => LexemeCode.Div,
+                        '(' => LexemeCode.LParen,
+                        ')' => LexemeCode.RParen,
+                        _ => LexemeCode.Error
+                    };
+                    string type = ch switch
+                    {
+                        '+' => "оператор сложения",
+                        '*' => "оператор умножения",
+                        '/' => "оператор деления",
+                        '(' => "открывающая скобка",
+                        ')' => "закрывающая скобка",
+                        _ => "ошибка"
+                    };
+                    result.Lexemes.Add(new Lexeme
+                    {
+                        Code = code,
+                        Type = type,
+                        Text = ch.ToString(),
+                        Line = line,
+                        StartColumn = col,
+                        EndColumn = col
+                    });
+                    i++; col++;
+                    continue;
+                }
+
                 if (ch == ':' || ch == '=' || ch == ';' || ch == '-')
                 {
                     LexemeCode code = ch == ':' ? LexemeCode.Colon : ch == '=' ? LexemeCode.Assign : ch == ';' ? LexemeCode.Semicolon : LexemeCode.Minus;
@@ -224,7 +270,7 @@ namespace LC1.Core
                 while (i < source.Length)
                 {
                     char c = source[i];
-                    bool isGood = char.IsDigit(c) || IsLatinLetter(c) || c == '_' || c == ':' || c == '=' || c == ';' || c == '-' || c == '.' || c == ' ' || c == '\t' || c == '\n';
+                    bool isGood = char.IsDigit(c) || IsLatinLetter(c) || c == '_' || c == ':' || c == '=' || c == ';' || c == '-' || c == '+' || c == '*' || c == '/' || c == '(' || c == ')' || c == '.' || c == ' ' || c == '\t' || c == '\n';
                     if (isGood) break;
                     i++; col++;
                 }

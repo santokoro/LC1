@@ -9,6 +9,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using LC1.Core;
+using LC1.Lab7;
 
 namespace LC1
 {
@@ -298,6 +299,20 @@ namespace LC1
 
             string pretty = PrettyTreePrinter.Print(tree, new KotlinConstParser(null));
             MessageBox.Show(pretty, "ANTLR AST");
+        }
+
+        private void RunLab7_Click(object sender, RoutedEventArgs e) => RunLab7Analysis();
+
+        private void RunLab7Analysis()
+        {
+            var result = Lab7Analyzer.Analyze(EditorTextBox.Text);
+            Lab7OutputTextBox.Text = Lab7Analyzer.FormatReport(result);
+            BottomTabControl.SelectedIndex = 2;
+
+            if (result.Success)
+                StatusBarText.Text = "ЛР7: AST и IR построены";
+            else
+                StatusBarText.Text = "ЛР7: ошибка анализа";
         }
 
         private void TokensGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)

@@ -49,7 +49,12 @@
 
 
 	<ItemGroup>
-	  <PackageReference Include="Antlr4.Runtime.Standard" Version="4.11.1" />
+	  <PackageReference Include="Antlr4.Runtime.Standard" Version="4.13.1" />
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Compile Remove="ANTLR\generated\**" />
+	  <None Include="ANTLR\generated\**" />
 	</ItemGroup>
 
 </Project>

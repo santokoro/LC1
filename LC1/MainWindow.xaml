@@ -81,6 +81,7 @@
                 </Button>
 
                 <Button Content="ANTLR Parser" Click="RunAntlrParser_Click" />
+                <Button Content="ЛР7: IR" Click="RunLab7_Click" ToolTip="AST, TAC и локальные оптимизации" />
 
                 <Separator/>
 
@@ -196,7 +197,7 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <TabControl Grid.Column="0">
+                <TabControl Name="BottomTabControl" Grid.Column="0">
                     <TabItem Header="Лексемы">
                         <DataGrid Name="TokensGrid"
                                   AutoGenerateColumns="False"
@@ -223,6 +224,19 @@
                                 <DataGridTextColumn Header="Описание" Binding="{Binding Message}" Width="*"/>
                             </DataGrid.Columns>
                         </DataGrid>
+                    </TabItem>
+
+                    <TabItem Header="ЛР7: IR">
+                        <TextBox Name="Lab7OutputTextBox"
+                                 IsReadOnly="True"
+                                 AcceptsReturn="True"
+                                 TextWrapping="Wrap"
+                                 VerticalScrollBarVisibility="Auto"
+                                 HorizontalScrollBarVisibility="Auto"
+                                 FontFamily="Consolas"
+                                 FontSize="13"
+                                 BorderThickness="0"
+                                 Background="Transparent"/>
                     </TabItem>
                 </TabControl>
 
