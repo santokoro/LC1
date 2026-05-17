@@ -1,7 +1,5 @@
-﻿using Antlr4.Runtime;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -9,7 +7,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using LC1.Core;
-using compiles_lab_1.Core;
 
 namespace LC1
 {
@@ -41,6 +38,9 @@ namespace LC1
             };
 
             EditorTextBox.SelectionChanged += (s, e) => UpdateStatusBar();
+
+            if (string.IsNullOrWhiteSpace(EditorTextBox.Text))
+                EditorTextBox.Text = "6 + 7 + 10 * 4";
 
             CommandBindings.Add(new CommandBinding(ApplicationCommands.New, (s, e) => NewFile()));
             CommandBindings.Add(new CommandBinding(ApplicationCommands.Open, (s, e) => OpenFile()));
@@ -109,44 +109,6 @@ namespace LC1
             }
         }
 
-        private void CheckFlexBison_Click(object sender, RoutedEventArgs e)
-        {
-            try
-            {
-                string parserPath = System.IO.Path.Combine(
-                    AppDomain.CurrentDomain.BaseDirectory,
-                    "parser.exe");
-
-                if (!File.Exists(parserPath))
-                {
-                    MessageBox.Show("parser.exe не найден в папке приложения.");
-                    return;
-                }
-
-                var process = new Process();
-                process.StartInfo.FileName = parserPath;
-                process.StartInfo.UseShellExecute = false;
-                process.StartInfo.RedirectStandardInput = true;
-                process.StartInfo.RedirectStandardOutput = true;
-                process.StartInfo.StandardOutputEncoding = Encoding.UTF8;
-                process.StartInfo.CreateNoWindow = true;
-
-                process.Start();
-
-                process.StandardInput.WriteLine(EditorTextBox.Text);
-                process.StandardInput.Close();
-
-                string output = process.StandardOutput.ReadToEnd();
-                process.WaitForExit();
-
-                MessageBox.Show("Результат парсера:\n" + output);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show("Ошибка: " + ex.Message);
-            }
-        }
-
         private void MenuOpen_Click(object sender, RoutedEventArgs e)
         {
             OpenFile();
@@ -196,30 +158,40 @@ namespace LC1
 
             try
             {
-                var scanResult = Scanner.Analyze(source);
-                var lexemes = scanResult.Lexemes;
-
-                var tokens = lexemes.Select(l => new
-                {
-                    Code = (int)l.Code,
-                    Type = l.Type,
-                    Lexeme = l.Text,
-                    Line = l.Line,
-                    Start = l.StartColumn,
-                    End = l.EndColumn,
-                    Location = $"строка {l.Line}, {l.StartColumn}-{l.EndColumn}"
-                }).ToList();
+                var scanResult = ExprScanner.Analyze(source);
+                var tokens = scanResult.Tokens
+                    .Where(t => t.Kind != ExprTokenKind.End)
+                    .Select(t => new
+                    {
+                        Code = (int)t.Kind,
+                        Type = t.Type,
+                        Lexeme = string.IsNullOrEmpty(t.Text) ? "⟨конец⟩" : t.Text,
+                        Line = t.Line,
+                        Start = t.StartColumn,
+                        End = t.EndColumn,
+                        Location = $"строка {t.Line}, {t.StartColumn}-{t.EndColumn}"
+                    })
+                    .ToList();
 
                 TokensGrid.ItemsSource = tokens;
 
-                var parseResult = LC1.Core.Parser.Analyze(source);
-                var errors = parseResult.Errors;
+                var parseResult = ExprRecursiveDescentParser.AnalyzeTokens(scanResult.Tokens);
 
-                int lexicalErrors = lexemes.Count(l => l.Code == LexemeCode.Error);
-                int syntaxErrors = errors.Count;
-                int totalErrors = lexicalErrors + syntaxErrors;
+                var lexicalErrors = scanResult.Tokens
+                    .Where(t => t.Kind == ExprTokenKind.Error)
+                    .Select(t => new ExprParseError
+                    {
+                        Fragment = t.Text,
+                        Message = "недопустимая лексема",
+                        Line = t.Line,
+                        StartColumn = t.StartColumn,
+                        EndColumn = t.EndColumn
+                    });
 
-                var errorRows = errors.Select(e => new
+                var allErrors = lexicalErrors.Concat(parseResult.Errors).ToList();
+                int totalErrors = allErrors.Count;
+
+                var errorRows = allErrors.Select(e => new
                 {
                     Fragment = string.IsNullOrEmpty(e.Fragment) ? "(пусто)" : e.Fragment,
                     Location = $"строка {e.Line}, {e.StartColumn}-{e.EndColumn}",
@@ -242,16 +214,37 @@ namespace LC1
                     ErrorGrid.ItemsSource = errorRows;
                 }
 
-                if (errors.Any())
+                if (parseResult.IsSuccess)
                 {
-                    StatusBarText.Text = $"Найдено ошибок: {totalErrors}";
-                    HighlightErrorInEditor(errors.First());
+                    TetradsPlaceholderText.Visibility = Visibility.Collapsed;
+                    TetradsGrid.Visibility = Visibility.Visible;
+                    TetradsGrid.ItemsSource = parseResult.Tetrads;
+
+                    RpnTextBox.Text = parseResult.RpnText;
+                    if (parseResult.CanEvaluate && parseResult.EvaluatedValue.HasValue)
+                        EvalResultText.Text = parseResult.EvaluatedValue.Value.ToString();
+                    else
+                        EvalResultText.Text = parseResult.EvaluationMessage ?? "—";
                 }
                 else
                 {
-                    StatusBarText.Text = lexicalErrors > 0
-                        ? $"Найдено ошибок: {totalErrors}"
-                        : "Синтаксических ошибок нет";
+                    TetradsPlaceholderText.Visibility = Visibility.Visible;
+                    TetradsGrid.Visibility = Visibility.Collapsed;
+                    TetradsGrid.ItemsSource = null;
+                    RpnTextBox.Text = "";
+                    EvalResultText.Text = "—";
+                }
+
+                if (allErrors.Count > 0)
+                {
+                    StatusBarText.Text = $"Найдено ошибок: {totalErrors}";
+                    HighlightErrorInEditor(allErrors[0]);
+                }
+                else
+                {
+                    StatusBarText.Text = parseResult.CanEvaluate && parseResult.EvaluatedValue.HasValue
+                        ? $"Ошибок нет. ПОЛИЗ: {parseResult.RpnText} = {parseResult.EvaluatedValue}"
+                        : $"Ошибок нет. ПОЛИЗ: {parseResult.RpnText}";
                 }
             }
             catch (Exception ex)
@@ -266,7 +259,7 @@ namespace LC1
             }
         }
 
-        private void HighlightErrorInEditor(ParseError error)
+        private void HighlightErrorInEditor(ExprParseError error)
         {
             try
             {
@@ -298,26 +291,6 @@ namespace LC1
                 EditorTextBox.Select(start, length);
                 EditorTextBox.ScrollToLine(line - 1);
             }
-        }
-
-        private void RunAntlrParser_Click(object sender, RoutedEventArgs e)
-        {
-            string source = EditorTextBox.Text;
-
-            var (tree, errors) = AntlrRunner.Run(source);
-
-            if (errors.Count > 0)
-            {
-                string msg = "Ошибки ANTLR:\n\n" + string.Join("\n", errors);
-                MessageBox.Show(msg, "ANTLR — ошибки", MessageBoxButton.OK, MessageBoxImage.Warning);
-            }
-            else
-            {
-                MessageBox.Show("ANTLR: ошибок нет!", "Успех", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-
-            string pretty = PrettyTreePrinter.Print(tree, new KotlinConstParser(null));
-            MessageBox.Show(pretty, "ANTLR AST");
         }
 
         private void TokensGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
