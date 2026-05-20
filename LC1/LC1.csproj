@@ -22,6 +22,19 @@
 		<None Remove="Images\save.png" />
 		<None Remove="Resources\About.html" />
 		<None Remove="Resources\Help.html" />
+		<None Remove="Resources\Grammar.html" />
+		<None Remove="Resources\Classification.html" />
+		<None Remove="Resources\TaskStatement.html" />
+		<None Remove="Resources\AnalysisMethod.html" />
+		<None Remove="Resources\FiniteAutomaton.png" />
+		<None Remove="Resources\TestExamples.html" />
+		<None Remove="Resources\TestExampleFig02.png" />
+		<None Remove="Resources\TestExampleFig03.png" />
+		<None Remove="Resources\TestExampleFig04.png" />
+		<None Remove="Resources\TestExampleFig05.png" />
+		<None Remove="Resources\TestExampleFig06.png" />
+		<None Remove="Resources\TestExampleFig07.png" />
+		<None Remove="Resources\Literature.html" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -38,6 +51,19 @@
 		<Resource Include="Images\save.png" />
 		<Resource Include="Resources\About.html" />
 		<Resource Include="Resources\Help.html" />
+		<Resource Include="Resources\Grammar.html" />
+		<Resource Include="Resources\Classification.html" />
+		<Resource Include="Resources\TaskStatement.html" />
+		<Resource Include="Resources\AnalysisMethod.html" />
+		<Resource Include="Resources\FiniteAutomaton.png" />
+		<Resource Include="Resources\TestExamples.html" />
+		<Resource Include="Resources\TestExampleFig02.png" />
+		<Resource Include="Resources\TestExampleFig03.png" />
+		<Resource Include="Resources\TestExampleFig04.png" />
+		<Resource Include="Resources\TestExampleFig05.png" />
+		<Resource Include="Resources\TestExampleFig06.png" />
+		<Resource Include="Resources\TestExampleFig07.png" />
+		<Resource Include="Resources\Literature.html" />
 	</ItemGroup>
 
 
@@ -50,6 +76,7 @@
 
 	<ItemGroup>
 	  <PackageReference Include="Antlr4.Runtime.Standard" Version="4.11.1" />
+	  <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.5.0" />
 	</ItemGroup>
 
 </Project>

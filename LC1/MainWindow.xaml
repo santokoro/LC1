@@ -33,25 +33,25 @@
             </MenuItem>
 
             <MenuItem Header="_Правка">
-                <MenuItem Header="Назад" Click="Undo_Click"/>
-                <MenuItem Header="Вперед" Click="Redo_Click"/>
+                <MenuItem Header="Назад" Command="ApplicationCommands.Undo"/>
+                <MenuItem Header="Вперед" Command="ApplicationCommands.Redo"/>
                 <Separator/>
-                <MenuItem Header="Вырезать" Click="Cut_Click"/>
-                <MenuItem Header="Вставить" Click="Paste_Click"/>
-                <MenuItem Header="Копировать" Click="Copy_Click"/>
-                <MenuItem Header="Удалить"/>
+                <MenuItem Header="Вырезать" Command="ApplicationCommands.Cut" CommandTarget="{Binding ElementName=EditorTextBox}"/>
+                <MenuItem Header="Вставить" Command="ApplicationCommands.Paste" CommandTarget="{Binding ElementName=EditorTextBox}"/>
+                <MenuItem Header="Копировать" Command="ApplicationCommands.Copy" CommandTarget="{Binding ElementName=EditorTextBox}"/>
+                <MenuItem Header="Удалить" Command="ApplicationCommands.Delete" CommandTarget="{Binding ElementName=EditorTextBox}"/>
                 <Separator/>
-                <MenuItem Header="Выделить всё"/>
+                <MenuItem Header="Выделить всё" Command="ApplicationCommands.SelectAll" CommandTarget="{Binding ElementName=EditorTextBox}"/>
             </MenuItem>
 
             <MenuItem Header="_Текст">
-                <MenuItem Header="Постановка задачи"/>
-                <MenuItem Header="Грамматика"/>
-                <MenuItem Header="Классификация грамматики"/>
-                <MenuItem Header="Метод анализа"/>
-                <MenuItem Header="Тестовый пример"/>
-                <MenuItem Header="Список литературы"/>
-                <MenuItem Header="Исходный код программы"/>
+                <MenuItem Header="Постановка задачи" Click="MenuTaskStatement_Click"/>
+                <MenuItem Header="Грамматика" Click="MenuGrammar_Click"/>
+                <MenuItem Header="Классификация грамматики" Click="MenuClassification_Click"/>
+                <MenuItem Header="Метод анализа" Click="MenuAnalysisMethod_Click"/>
+                <MenuItem Header="Тестовый пример" Click="MenuTestExamples_Click"/>
+                <MenuItem Header="Список литературы" Click="MenuLiterature_Click"/>
+                <MenuItem Header="Исходный код программы" Click="MenuSourceCode_Click"/>
             </MenuItem>
 
             <MenuItem Header="_Пуск" Click="MenuRun_Click"/>
@@ -84,25 +84,25 @@
 
                 <Separator/>
 
-                <Button ToolTip="Назад" Click="Undo_Click">
+                <Button ToolTip="Назад" Command="ApplicationCommands.Undo">
                     <Image Source="Images/back.png" Width="30" Height="30"/>
                 </Button>
 
-                <Button ToolTip="Вперед" Click="Redo_Click">
+                <Button ToolTip="Вперед" Command="ApplicationCommands.Redo">
                     <Image Source="Images/forward.png" Width="30" Height="30"/>
                 </Button>
 
                 <Separator/>
 
-                <Button ToolTip="Копировать" Click="Copy_Click">
+                <Button ToolTip="Копировать" Command="ApplicationCommands.Copy" CommandTarget="{Binding ElementName=EditorTextBox}">
                     <Image Source="Images/copy.png" Width="30" Height="30"/>
                 </Button>
 
-                <Button ToolTip="Вырезать" Click="Cut_Click">
+                <Button ToolTip="Вырезать" Command="ApplicationCommands.Cut" CommandTarget="{Binding ElementName=EditorTextBox}">
                     <Image Source="Images/cut.png" Width="30" Height="30"/>
                 </Button>
 
-                <Button ToolTip="Вставить" Click="Paste_Click">
+                <Button ToolTip="Вставить" Command="ApplicationCommands.Paste" CommandTarget="{Binding ElementName=EditorTextBox}">
                     <Image Source="Images/enter.png" Width="30" Height="30"/>
                 </Button>
 

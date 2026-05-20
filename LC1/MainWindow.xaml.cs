@@ -37,6 +37,7 @@ namespace LC1
                     undoStack.Push(EditorTextBox.Text);
                     redoStack.Clear();
                     isTextChanged = true;
+                    CommandManager.InvalidateRequerySuggested();
                 }
             };
 
@@ -46,8 +47,12 @@ namespace LC1
             CommandBindings.Add(new CommandBinding(ApplicationCommands.Open, (s, e) => OpenFile()));
             CommandBindings.Add(new CommandBinding(ApplicationCommands.Save, (s, e) => SaveFile()));
             CommandBindings.Add(new CommandBinding(ApplicationCommands.SaveAs, (s, e) => SaveFileAs()));
-            CommandBindings.Add(new CommandBinding(ApplicationCommands.Undo, (s, e) => Undo()));
-            CommandBindings.Add(new CommandBinding(ApplicationCommands.Redo, (s, e) => Redo()));
+            CommandBindings.Add(new CommandBinding(ApplicationCommands.Undo,
+                (s, e) => Undo(),
+                (s, e) => e.CanExecute = undoStack.Count > 1));
+            CommandBindings.Add(new CommandBinding(ApplicationCommands.Redo,
+                (s, e) => Redo(),
+                (s, e) => e.CanExecute = redoStack.Count > 0));
             CommandBindings.Add(new CommandBinding(NavigationCommands.Refresh, (s, e) => RunCompiler()));
             CommandBindings.Add(new CommandBinding(ApplicationCommands.Close, (s, e) => MenuExit_Click(s, e)));
         }
@@ -72,6 +77,7 @@ namespace LC1
 
             EditorTextBox.Clear();
             isTextChanged = false;
+            CommandManager.InvalidateRequerySuggested();
         }
 
         private void MenuNew_Click(object sender, RoutedEventArgs e) => NewFile();
@@ -106,6 +112,7 @@ namespace LC1
                 isTextChanged = false;
 
                 this.Title = $"Compiler — {Path.GetFileName(currentFilePath)}";
+                CommandManager.InvalidateRequerySuggested();
             }
         }
 
@@ -346,6 +353,7 @@ namespace LC1
                 EditorTextBox.Text = undoStack.Peek();
                 isInternalChange = false;
             }
+            CommandManager.InvalidateRequerySuggested();
         }
 
         private void Redo()
@@ -358,17 +366,18 @@ namespace LC1
                 EditorTextBox.Text = state;
                 isInternalChange = false;
             }
+            CommandManager.InvalidateRequerySuggested();
         }
-
-        private void Undo_Click(object sender, RoutedEventArgs e) => Undo();
-        private void Redo_Click(object sender, RoutedEventArgs e) => Redo();
-
-        private void Copy_Click(object sender, RoutedEventArgs e) => EditorTextBox.Copy();
-        private void Cut_Click(object sender, RoutedEventArgs e) => EditorTextBox.Cut();
-        private void Paste_Click(object sender, RoutedEventArgs e) => EditorTextBox.Paste();
 
         private void MenuAbout_Click(object sender, RoutedEventArgs e) => new AboutWindow().ShowDialog();
         private void MenuHelp_Click(object sender, RoutedEventArgs e) => new HelpWindow().ShowDialog();
+        private void MenuTaskStatement_Click(object sender, RoutedEventArgs e) => new TaskStatementWindow().ShowDialog();
+        private void MenuGrammar_Click(object sender, RoutedEventArgs e) => new GrammarWindow().ShowDialog();
+        private void MenuClassification_Click(object sender, RoutedEventArgs e) => new ClassificationWindow().ShowDialog();
+        private void MenuAnalysisMethod_Click(object sender, RoutedEventArgs e) => new AnalysisMethodWindow().ShowDialog();
+        private void MenuTestExamples_Click(object sender, RoutedEventArgs e) => new TestExamplesWindow().ShowDialog();
+        private void MenuLiterature_Click(object sender, RoutedEventArgs e) => new LiteratureWindow().ShowDialog();
+        private void MenuSourceCode_Click(object sender, RoutedEventArgs e) => new SourceCodeWindow().ShowDialog();
 
         private void ApplyFontSize(double size)
         {
@@ -490,6 +499,7 @@ namespace LC1
             isTextChanged = false;
 
             this.Title = $"Compiler — {Path.GetFileName(path)}";
+            CommandManager.InvalidateRequerySuggested();
         }
 
         private void UpdateStatusBar()

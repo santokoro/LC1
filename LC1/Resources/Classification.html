@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8"/>
+    <title>Классификация грамматики</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 16px 20px; font-size: 14px; line-height: 1.55; color: #111; max-width: 900px; }
+        h1 { font-size: 18px; margin-bottom: 14px; text-align: center; }
+        p { margin: 10px 0; }
+        .formula {
+            font-family: 'Cambria Math', 'Times New Roman', serif;
+            font-size: 15px;
+            margin: 12px 0;
+            padding: 10px 14px;
+            background: #f6f8fa;
+            border: 1px solid #e1e4e8;
+            border-radius: 4px;
+        }
+        .example {
+            font-family: Consolas, 'Courier New', monospace;
+            font-size: 13px;
+            margin: 10px 0;
+            padding: 8px 12px;
+            background: #f6f8fa;
+            border: 1px solid #e1e4e8;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>3 Классификация грамматики</h1>
+    <p>Согласно классификации Хомского, грамматика <i>G</i>[⟨F⟩] является <strong>автоматной</strong>.</p>
+    <p>Формально автоматная грамматика определяется правилами вида:</p>
+    <p class="formula"><i>A</i> → <i>a</i><i>B</i> | <i>a</i> | ε, где <i>a</i> ∈ <i>V</i><sub>T</sub>, <i>A</i> ∈ <i>V</i><sub>N</sub> и <i>B</i> ∈ <i>V</i><sub>N</sub>.</p>
+    <p>Здесь в левой части правил может быть только один нетерминальный символ, а в правой – либо один терминальный и один нетерминальный символ, либо один терминальный символ, либо пустая строка.</p>
+    <p>В данной работе грамматика инициализации вещественной константы на языке Kotlin использует именно этот принцип.</p>
+    <p>Например, правило</p>
+    <p class="example">&lt;F&gt; -&gt; 'const' &lt;CONST&gt; | 'ε' &lt;SPACE&gt;</p>
+    <p>соответствует данному определению, так как в левой части стоит ровно один нетерминал ⟨F⟩, а в правой — цепочка, начинающаяся с терминального фрагмента.</p>
+</body>
+</html>

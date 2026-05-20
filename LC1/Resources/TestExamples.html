@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8"/>
+    <title>Тестовый пример</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 16px 20px; font-size: 14px; line-height: 1.55; color: #111; max-width: 980px; }
+        h1 { font-size: 18px; margin-bottom: 12px; text-align: center; }
+        p.intro { margin: 10px 0 18px 0; }
+        section { margin: 22px 0; page-break-inside: avoid; }
+        .code {
+            font-family: Consolas, 'Courier New', monospace;
+            font-size: 13px;
+            margin: 8px 0 10px 0;
+            padding: 8px 12px;
+            background: #f6f8fa;
+            border: 1px solid #e1e4e8;
+            border-radius: 4px;
+        }
+        figure { margin: 10px 0 0 0; text-align: center; }
+        figure img { max-width: 100%; height: auto; border: 1px solid #d0d7de; border-radius: 4px; }
+        figcaption { margin-top: 8px; font-size: 13px; color: #333; font-weight: 600; }
+    </style>
+</head>
+<body>
+    <h1>Тестовый пример</h1>
+    <p class="intro">На рисунках 2–7 приведены примеры тестового запуска разработанного синтаксического анализатора, проверяющего корректность объявления вещественной константы с инициализацией на языке Kotlin.</p>
+
+    <section>
+        <p><strong>1.</strong></p>
+        <div class="code">const val pi: Double = 3.14;</div>
+        <figure>
+            <img src="___FIG02___" alt="Тестовый пример 1: успешный разбор"/>
+            <figcaption>Рисунок 2 – Тестовый пример 1</figcaption>
+        </figure>
+    </section>
+
+    <section>
+        <p><strong>2.</strong></p>
+        <div class="code">val pi: Double = 3.14;</div>
+        <figure>
+            <img src="___FIG03___" alt="Тестовый пример 2: отсутствует const"/>
+            <figcaption>Рисунок 3 – Тестовый пример 2</figcaption>
+        </figure>
+    </section>
+
+    <section>
+        <p><strong>3.</strong></p>
+        <div class="code">cons@t val pi: Double = 3.14;</div>
+        <figure>
+            <img src="___FIG04___" alt="Тестовый пример 3: искажённое ключевое слово"/>
+            <figcaption>Рисунок 4 – Тестовый пример 3</figcaption>
+        </figure>
+    </section>
+
+    <section>
+        <p><strong>4.</strong></p>
+        <div class="code">const: val pi: Double = 3.14;</div>
+        <figure>
+            <img src="___FIG05___" alt="Тестовый пример 4: лишнее двоеточие"/>
+            <figcaption>Рисунок 5 – Тестовый пример 4</figcaption>
+        </figure>
+    </section>
+
+    <section>
+        <p><strong>5.</strong></p>
+        <div class="code">const val pi: Int = 3.14;</div>
+        <figure>
+            <img src="___FIG06___" alt="Тестовый пример 5: неверный тип"/>
+            <figcaption>Рисунок 6 – Тестовый пример 5</figcaption>
+        </figure>
+    </section>
+
+    <section>
+        <p><strong>6.</strong></p>
+        <div class="code">const val pi: Double = 3.1@4;</div>
+        <figure>
+            <img src="___FIG07___" alt="Тестовый пример 6: ошибка в литерале"/>
+            <figcaption>Рисунок 7 – Тестовый пример 6</figcaption>
+        </figure>
+    </section>
+</body>
+</html>

@@ -236,6 +236,8 @@ namespace LC1.Core
                         StartColumn = tokens[start].StartColumn,
                         EndColumn = tokens[i - 1].EndColumn
                     });
+                    // Пропустили ошибочный ';' вместо ':' — дальше по грамматике идёт тип Double.
+                    phase = ParsePhase.ExpectDoubleKeyword;
                     continue;
                 }
 
@@ -300,7 +302,10 @@ namespace LC1.Core
                     else if (phase != ParsePhase.Done)
                     {
                         bool nextMatchesCurrent = i < tokens.Count && CheckMatch(tokens, i, phase) > 0;
-                        if (!nextMatchesCurrent)
+                        // После лексической ошибки на месте типа (например "1" вместо Double) следующий
+                        // токен редко совпадает с KeywordDouble — но фазу нельзя переводить на ExpectAssign,
+                        // иначе идентификатор-«псевдотип» даёт ложное «ожидается '='» и сливается с числом.
+                        if (!nextMatchesCurrent && phase != ParsePhase.ExpectDoubleKeyword)
                             phase = (ParsePhase)((int)phase + 1);
                     }
                     continue;
@@ -360,7 +365,11 @@ namespace LC1.Core
                         }
                         else if (ph == ParsePhase.ExpectAssign)
                         {
-                            if (tokens[j].Code == LexemeCode.Assign && IsAssignAfterDoubleTypeKeyword(tokens, j))
+                            // Обычно '=' принимаем только после ключевого слова Double; при ожидании Double
+                            // (ошибочный «тип») иначе '=' не находится и синхронизация уезжает до ';',
+                            // сливая идентификатор, '=' и число в одну ошибку.
+                            if (tokens[j].Code == LexemeCode.Assign &&
+                                (IsAssignAfterDoubleTypeKeyword(tokens, j) || phase == ParsePhase.ExpectDoubleKeyword))
                                 syncMatch = true;
                         }
                         else if (CheckMatch(tokens, j, ph) > 0)

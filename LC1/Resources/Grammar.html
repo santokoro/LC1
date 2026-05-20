@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8"/>
+    <title>Грамматика</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 16px 20px; font-size: 14px; line-height: 1.5; color: #111; }
+        h1 { font-size: 18px; margin-bottom: 12px; }
+        pre {
+            font-family: Consolas, 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            margin: 0 0 16px 0;
+            padding: 12px 14px;
+            background: #f6f8fa;
+            border: 1px solid #e1e4e8;
+            border-radius: 4px;
+        }
+        .meta { margin-top: 8px; }
+        .meta p { margin: 6px 0; }
+    </style>
+</head>
+<body>
+    <h1>Грамматика</h1>
+    <pre>Определим грамматику объявления и инициализации вещественной константы в языке Kotlin G[&lt;F&gt;] в нотации Хомского с продукциями P:
+        &lt;F&gt; -&gt; 'const' &lt;CONST&gt; | 'ε' &lt;SPACE&gt;
+        &lt;CONST&gt; -&gt; ' ' &lt;SPACE&gt;
+        &lt;SPACE&gt; -&gt; 'val' &lt;VALUE&gt;
+        &lt;VALUE&gt; -&gt; ' ' &lt;SPACEAFTER&gt;
+        &lt;SPACEAFTER&gt; -&gt; letter &lt;ID&gt;
+        &lt;ID&gt; -&gt; letter &lt;ID&gt; | digit &lt;ID&gt; | '_' &lt;ID&gt; | ':'&lt;AFTER_COLON&gt;
+        &lt;AFTER_COLON&gt; -&gt; 'Double' &lt;TYPE&gt;
+        &lt;TYPE&gt; -&gt; '=' &lt;EQUAL&gt;
+        &lt;EQUAL&gt; = '-' &lt;INT&gt; | digit &lt;INTREM&gt; |
+        &lt;INT&gt; -&gt; digit &lt;INTREM&gt;
+        &lt;DIGIT &gt; -&gt; '0'|'...'|'9'
+        &lt;INTREM&gt; -&gt; digit &lt;INTREM&gt; | '.' &lt;DOUBLE&gt; |';' &lt;END&gt;</pre>
+    <div class="meta">
+        <p>Следуя введенному формальному определению грамматики, представим G[⟨F⟩] ее составляющими:</p>
+        <p>− Z = &lt; F &gt;</p>
+        <p>− V_T = {a…z,A…Z,0…9,=,_,;,-.,}</p>
+        <p>− V_N = {&lt;F&gt;, &lt;CONST&gt;, &lt;SPACE&gt;, &lt;VALUE&gt;, &lt; SPACEAFTER&gt;, &lt;ID&gt;, &lt;AFTER_COLON&gt;, &lt;TYPE&gt;, &lt;EQUAL&gt;, &lt;INT&gt;, &lt;INTREM&gt;, &lt;DIGIT&gt;, &lt;DOUBLE&gt;, &lt;END&gt;}</p>
+    </div>
+</body>
+</html>

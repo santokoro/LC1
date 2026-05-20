@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8"/>
+    <title>Постановка задачи</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 16px 20px; font-size: 14px; line-height: 1.55; color: #111; max-width: 900px; }
+        h1 { font-size: 18px; margin-bottom: 14px; text-align: center; }
+        p { margin: 10px 0; }
+        .format {
+            font-family: Consolas, 'Courier New', monospace;
+            font-size: 13px;
+            margin: 12px 0;
+            padding: 10px 14px;
+            background: #f6f8fa;
+            border: 1px solid #e1e4e8;
+            border-radius: 4px;
+        }
+        .example {
+            font-family: Consolas, 'Courier New', monospace;
+            font-size: 13px;
+            margin: 6px 0 6px 1.2em;
+            padding: 4px 0;
+        }
+        ol.examples { margin: 8px 0 12px 0; padding-left: 1.4em; }
+        ol.examples li { margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>Постановка задачи</h1>
+    <p>Константы в языке Kotlin объявляются с ключевым словом <strong>const</strong> и используются для значений, известных на этапе компиляции. Для объявления именованной константы с явным типом и инициализацией применяется конструкция с ключевыми словами <strong>const</strong> и <strong>val</strong>, именем идентификатора, указанием типа после двоеточия и присваиванием значения.</p>
+    <p><strong>Формат записи:</strong></p>
+    <p class="format">const val идентификатор : Double = вещественное_число ;</p>
+    <p><strong>Примеры:</strong></p>
+    <ol class="examples">
+        <li>Простая константа с положительным вещественным значением:
+            <div class="example">const val pi: Double = 3.14;</div>
+        </li>
+        <li>Константа с отрицательным вещественным значением:
+            <div class="example">const val x: Double = -2.5;</div>
+        </li>
+        <li>Другой идентификатор и другое число:
+            <div class="example">const val rate: Double = 0.01;</div>
+        </li>
+    </ol>
+    <p>В связи с разработанной автоматной грамматикой <i>G</i> и реализацией разбора на основе конечного автомата синтаксический анализатор (парсер) объявления вещественной константы будет считать верными строки, полностью удовлетворяющие указанному формату и правилам лексического разбора (набор допустимых лексем, границы ключевых слов, форма вещественного литерала и т.д.), например:</p>
+    <ol class="examples">
+        <li><div class="example">const val pi: Double = 3.14;</div></li>
+        <li><div class="example">const val e: Double = 2.718;</div></li>
+    </ol>
+    <p>Справка (руководство пользователя) представлена в Приложении А.</p>
+</body>
+</html>
